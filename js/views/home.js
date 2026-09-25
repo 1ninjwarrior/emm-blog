@@ -2,7 +2,7 @@
 // post viewer, composer (photo / video / thought), board editor, next-special-day card.
 import { state, ready, watch, items, byId, prefs, add, update, remove, upload, errText, on } from '../store.js';
 import { $, esc, h, sheet, confirmDlg, choose, toast, confetti, reconcile, icon, fmtDate, todayKey, fileDrop, LOOKS, lookSwatch, emptyHTML, reducedMotion, cornerHTML } from '../ui.js';
-import { postSrc, originalSrc, postSize, hasLegacyDeco, uploadPhoto, videoInfo, createPost, updatePost, saveRender, deletePost } from '../posts.js';
+import { postSrc, cardSrc, originalSrc, postSize, hasLegacyDeco, uploadPhoto, videoInfo, createPost, updatePost, saveRender, deletePost } from '../posts.js';
 import { saveUrl, copyText } from '../share.js';
 import { rankDays, countLabel, prettyDate } from '../days.js';
 
@@ -216,9 +216,9 @@ function cardEl(p) {
   if (p.kind === 'video') {
     media = `<div class="media"><video src="${esc(originalSrc(p))}#t=0.1" muted playsinline preload="metadata"></video><span class="badge" aria-hidden="true">▶</span></div>`;
   } else if (hasLegacyDeco(p)) {
-    media = decoHTML(postSrc(p), p, p.text || 'Photo', true);
+    media = decoHTML(cardSrc(p), p, p.text || 'Photo', true);
   } else {
-    media = `<div class="media"><img src="${esc(postSrc(p))}" alt="${esc(p.text || (p.kind === 'collage' ? 'Collage' : 'Photo'))}" loading="lazy" decoding="async"${ar}>${p.kind === 'collage' ? '<span class="badge" aria-hidden="true">🖼️</span>' : ''}</div>`;
+    media = `<div class="media"><img src="${esc(cardSrc(p))}" alt="${esc(p.text || (p.kind === 'collage' ? 'Collage' : 'Photo'))}" loading="lazy" decoding="async"${ar}>${p.kind === 'collage' ? '<span class="badge" aria-hidden="true">🖼️</span>' : ''}</div>`;
   }
   const cap = `<div class="cap">${p.text ? `<p>${esc(p.text)}</p>` : ''}<span class="meta">${p.kind === 'video' ? 'Video · ' : p.kind === 'collage' ? 'Collage · ' : ''}${fmtDate(p.createdAt)}</span></div>`;
   return h(`<button type="button" class="pin ${p.kind}" aria-label="Open ${p.kind}">${fav}<div class="inner">${media}${cap}</div></button>`);

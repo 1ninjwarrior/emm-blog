@@ -270,6 +270,7 @@ let confettiRaf = 0;
 export function confetti({ emoji = '', x = null, y = null, count = 70 } = {}) {
   const cv = document.getElementById('confetti');
   if (!cv) return;
+  cv.classList.add('on');
   const small = reducedMotion();
   const cs = getComputedStyle(document.documentElement);
   const colors = [1, 2, 3, 4, 5].map((i) => cs.getPropertyValue('--petal-' + i).trim() || '#FF9EC2').concat(['#FFE08A', '#FFFFFF']);
@@ -323,7 +324,7 @@ function tickConfetti() {
     ctx.restore();
   }
   if (confettiParts.length) confettiRaf = requestAnimationFrame(tickConfetti);
-  else { confettiRaf = 0; ctx.clearRect(0, 0, innerWidth, innerHeight); }
+  else { confettiRaf = 0; ctx.clearRect(0, 0, innerWidth, innerHeight); cv.classList.remove('on'); }
 }
 /** Heart path centered at x,y with width s. Also used by frames / share cards. */
 export function heartPath(ctx, x, y, s) {

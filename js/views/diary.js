@@ -2,7 +2,7 @@
 // searchable entry list, notebook editor (autosave), journal read view, save-as-image.
 //
 // diary doc: {date 'yyyy-mm-dd', mood, weather, title, body, photoIds[], tags[], createdAt, updatedAt, favorite}
-import { state, ready, watch, add, set, remove, patchSoon, flushNow, byId, prefs, deleteAsset, blobSrc, errText } from '../store.js';
+import { state, ready, watch, add, set, remove, patchSoon, flushNow, byId, prefs, deleteAsset, blobSrc, errText, thumbSrc } from '../store.js';
 import {
   $, esc, sheet, confirmDlg, choose, toast, confetti, reconcile, emptyHTML, debounce, icon,
   todayKey, parseKey, addDays, MONTHS, WEEKDAYS, loadFonts, loadImage, cornerHTML,
@@ -399,7 +399,7 @@ function createRow(r) {
       <span class="dentry-body">${esc(e.title ? firstLine(e.body) : String(e.body || '').split('\n').filter((l) => l.trim())[1] || '').slice(0, 140)}</span>
       <span class="dentry-meta">${w ? `<span>${w.emoji} ${esc(w.label)}</span>` : ''}${(e.tags || []).slice(0, 3).map((t) => `<span>#${esc(t)}</span>`).join('')}${(e.photoIds || []).length ? `<span>📷 ${(e.photoIds || []).length}</span>` : ''}</span>
     </span>
-    ${photo ? `<img class="dentry-ph" src="${esc(blobSrc(photo))}" alt="" loading="lazy" decoding="async">` : ''}
+    ${photo ? `<img class="dentry-ph" src="${esc(thumbSrc(photo, 240))}" alt="" loading="lazy" decoding="async">` : ''}
     ${e.favorite ? '<span class="dentry-fav" aria-label="favorite">♥</span>' : ''}`;
   return el;
 }

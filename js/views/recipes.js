@@ -2,7 +2,7 @@
 //
 // recipes doc: {title, emoji, photoId, servings, prepMin, cookMin, ingredients:[{id,text,checked}],
 //               steps:[{id,text}], notes, tags:[], favorite, createdAt, updatedAt}
-import { state, ready, watch, add, set, remove, patchSoon, flushNow, prefs, newId, items, byId, blobSrc, deleteAsset, errText } from '../store.js';
+import { state, ready, watch, add, set, remove, patchSoon, flushNow, prefs, newId, items, byId, blobSrc, deleteAsset, errText, thumbSrc } from '../store.js';
 import { esc, h, sheet, fullscreen, confirmDlg, toast, confetti, reconcile, emptyHTML, icon, choose, clamp, debounce, keepAwake, fileDrop, loadImage, reducedMotion } from '../ui.js';
 import { copyText, saveCanvas, makeCanvas, roundRect, drawText, tokens, dottedBg, tape, wrapLines } from '../share.js';
 import { uploadPhoto } from '../posts.js';
@@ -136,7 +136,7 @@ const cardSig = (r) => [r.title, r.emoji, r.photoId, r.favorite, r.prepMin, r.co
 function cardNode(r) {
   const t = totalMin(r);
   const n = h(`<button type="button" class="rc-card pressable" aria-label="${esc(r.title || 'Untitled recipe')}">
-    <span class="rc-pic">${r.photoId ? `<img src="${esc(blobSrc(r.photoId))}" alt="" loading="lazy" decoding="async">` : `<span class="rc-emoji" aria-hidden="true">${esc(r.emoji || '🍰')}</span>`}
+    <span class="rc-pic">${r.photoId ? `<img src="${esc(thumbSrc(r.photoId, 480))}" alt="" loading="lazy" decoding="async">` : `<span class="rc-emoji" aria-hidden="true">${esc(r.emoji || '🍰')}</span>`}
       ${r.favorite ? '<span class="rc-fav" aria-label="favorite">💖</span>' : ''}</span>
     <span class="rc-info"><b>${esc(r.title || 'Untitled recipe')}</b>
       <span class="rc-meta">${t ? `⏱ ${fmtMin(t)}` : ''}${t && r.servings ? ' · ' : ''}${r.servings ? `🍽 ${r.servings}` : ''}${!t && !r.servings ? `${(r.ingredients || []).length} ingredients` : ''}</span></span>

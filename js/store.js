@@ -517,7 +517,42 @@ export async function blobOf(id) {
   try { const r = await fetch(blobSrc(id)); return r.ok ? await r.blob() : null; } catch (e) { return null; }
 }
 /** Every stored asset id (device/memory). */
-export const blobIds = () => [...localBlobs.keys()];
+export const blobIds = () => [...localBlobs.keys()].filter((k) => !k.startsWith('thumb:'));
+
+// ---------- grid thumbnails (device mode) ----------
+// Cards show a ~640px copy instead of the full photo, so scrolling doesn't decode multi-MB images.
+// Made lazily in idle time the first time a photo is shown; cached as blob `thumb:<id>` (not backed up).
+const thumbJobs = new Set();
+const idle = (fn) => (window.requestIdleCallback ? window.requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 250));
+export function thumbSrc(id, max = 640) {
+  if (!id) return '';
+  const tid = 'thumb:' + id;
+  if (localBlobs.has(tid)) return blobSrc(tid);
+  const l = localBlobs.get(id);
+  const type = l && (l.type || (l.blob && l.blob.type) || '');
+  if (l && l.blob && state.mode === 'device' && /^image\/(jpeg|png|webp)/.test(type) && !thumbJobs.has(id)) {
+    thumbJobs.add(id);
+    idle(() => makeThumb(id, tid, l.blob, max));
+  }
+  return blobSrc(id);
+}
+async function makeThumb(id, tid, blob, max) {
+  try {
+    const bmp = await createImageBitmap(blob);
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    if (k === 1 && blob.size < 350000) { bmp.close && bmp.close(); return; } // already small
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(bmp.width * k));
+    c.height = Math.max(1, Math.round(bmp.height * k));
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    bmp.close && bmp.close();
+    const keepAlpha = /png|webp/.test(blob.type);
+    const t = await new Promise((r) => c.toBlob(r, keepAlpha ? 'image/webp' : 'image/jpeg', 0.82));
+    if (!t) return;
+    await putBlobAs(tid, t, t.type);
+    emit('thumb', id);
+  } catch (e) { /* keep showing the full image */ }
+}
 
 /** Restore helper: store a blob under a fixed id. */
 export async function putBlobAs(id, blob, type) {
@@ -546,6 +581,7 @@ export async function deleteAsset(id) {
       const b = localBlobs.get(id);
       if (b.url) URL.revokeObjectURL(b.url);
       localBlobs.delete(id);
+      if (localBlobs.has('thumb:' + id)) { const t = localBlobs.get('thumb:' + id); if (t.url) URL.revokeObjectURL(t.url); localBlobs.delete('thumb:' + id); if (state.mode === 'device') idb.delBlob('thumb:' + id).catch(() => {}); }
       if (state.mode === 'device') { await idb.delBlob(id); if (chan) chan.postMessage({ t: 'blob', id, del: 1 }); }
       return;
     }

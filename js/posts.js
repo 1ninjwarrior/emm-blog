@@ -6,13 +6,15 @@
 //             edit: {type:'story'|'collage', v, ...} <- editable model (additive)
 //             renderedId, rw, rh                   <- flattened image of the edit (grid shows it)
 //             favorite, updatedAt}
-import { add, set, update, remove, upload, deleteAsset, blobSrc, byId, errText } from './store.js';
+import { add, set, update, remove, upload, deleteAsset, blobSrc, thumbSrc, byId, errText } from './store.js';
 
 const OK_IMG = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 const MAX = 20 * 1024 * 1024;
 
 /** The URL a post card should show (rendered edit first, then original). */
 export const postSrc = (p) => blobSrc(p.renderedId || p.assetId);
+/** Smaller copy for grid cards (falls back to the full image until it's made). */
+export const cardSrc = (p) => thumbSrc(p.renderedId || p.assetId);
 export const originalSrc = (p) => blobSrc(p.assetId);
 /** Known display size or null. */
 export function postSize(p) {
