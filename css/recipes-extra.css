@@ -1,0 +1,81 @@
+/* Em&m Blog: recipes-extra styles — import sheet, import banner, receiving/sending links, grocery picker,
+   kitchen timer bar. Tokens only ("soft paper, one pink"). */
+
+/* import sheet */
+.imp-help{margin:0;color:var(--muted);font-weight:600}
+.imp-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.imp-row .btn svg{width:17px;height:17px}
+label.btn{cursor:pointer}
+.imp-code{background:var(--blush);border-radius:var(--r-md);padding:12px 14px}
+.imp-code .note{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.imp-err{background:var(--blush);border-radius:var(--r-md);padding:12px 14px;display:grid;gap:6px}
+.imp-err b{font-weight:800}
+.imp-err p{margin:0;color:var(--muted);font-weight:600;font-size:14px}
+.imp-working{display:grid;justify-items:center;gap:12px;padding:36px 12px 20px;text-align:center}
+.imp-working p{margin:0;font-weight:700;font-size:16px;min-height:1.5em}
+.imp-spin{font-size:40px;animation:impBob 1.6s ease-in-out infinite}
+@keyframes impBob{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-6px) rotate(6deg)}}
+@media (prefers-reduced-motion:reduce){.imp-spin{animation:none}}
+
+/* editor top: two quiet entry points + the import banner */
+.rf-ctas{display:grid;gap:10px}
+@media (min-width:700px){.rf-ctas{grid-template-columns:1fr 1fr}}
+.rf-ctas .paste-cta{border:0;background:var(--blush)}
+.rf-ctas .paste-cta:hover{background:color-mix(in srgb,var(--blush) 80%,var(--rose))}
+.imp-note{display:flex;gap:10px;align-items:flex-start;background:var(--blush);border-radius:var(--r-md);padding:12px 8px 12px 14px}
+.imp-note .grow{flex:1;min-width:0}
+.imp-note b{display:block;font-weight:800}
+.imp-note p{margin:2px 0 0;color:var(--muted);font-size:13.5px;font-weight:600}
+.imp-note-ic svg{width:20px;height:20px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round;margin-top:2px}
+.imp-note-link{display:inline-block;color:var(--muted);font-weight:700;font-size:13.5px;text-decoration:underline;text-underline-offset:3px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imp-note .icon-btn{width:34px;height:34px}
+
+/* recipe view: source row */
+.rv-source{display:inline-block;margin-top:12px;color:var(--muted);font-weight:700;font-size:14px;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;overflow-wrap:anywhere}
+
+/* receiving */
+.rcv-card{background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden;padding-bottom:14px}
+.rcv-pic{aspect-ratio:4/3;max-height:260px;width:100%;background:var(--blush);display:grid;place-items:center;overflow:hidden}
+.rcv-pic img{width:100%;height:100%;object-fit:cover;display:block}
+.rcv-pic .rc-emoji{font-size:64px}
+.rcv-pic.noimg{aspect-ratio:auto;height:130px}
+.rcv-card>*:not(.rcv-pic){margin-inline:16px}
+.rcv-title{font-family:var(--body);font-weight:800;font-size:20px;margin:14px 16px 0;color:var(--ink);line-height:1.2;overflow-wrap:anywhere}
+.rcv-from{font-family:var(--hand);font-size:22px;color:var(--muted);margin:0 16px;line-height:1.2}
+.rcv-card .muted-line{margin:6px 16px 0}
+.rcv-ings{margin:10px 16px 0;padding-left:18px;font-weight:600}
+.rcv-ings li{margin:2px 0;overflow-wrap:anywhere}
+.rcv-dup{margin:0;background:var(--blush);border-radius:var(--r-md);padding:10px 14px}
+
+/* recipe → grocery picker */
+.gp-top{display:flex;gap:8px}
+.gp-list{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.gp-row{width:100%;display:flex;align-items:center;gap:12px;border:0;background:none;padding:8px 6px;border-radius:var(--r-md);text-align:left;color:var(--ink)}
+.gp-row:hover{background:var(--blush)}
+.gp-row .cbox{pointer-events:none}
+.gp-tx{display:grid;min-width:0;font-weight:700}
+.gp-tx span{overflow-wrap:anywhere}
+.gp-to{color:var(--muted);font-weight:600;font-size:13px}
+
+/* kitchen timers: a slim bar above the tab bar (phones) / bottom-right (desktop) */
+.timer-bar{position:fixed;z-index:29;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  display:flex;gap:6px;max-width:calc(100vw - 24px);overflow-x:auto;scrollbar-width:none;padding:2px}
+.timer-bar::-webkit-scrollbar{display:none}
+.tb-item{flex:none;display:inline-flex;align-items:center;gap:6px;border:0;background:var(--paper);color:var(--ink);border-radius:var(--r-pill);
+  box-shadow:var(--shadow);padding:6px 12px 6px 10px;font-size:13px;font-weight:700;max-width:260px}
+.tb-item b{font-weight:800;font-variant-numeric:tabular-nums}
+.tb-item .tb-l{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.tb-ic svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.tb-item.paused b{color:var(--muted)}
+.tb-item.done{background:var(--pink);color:var(--pink-ink)}
+.tb-item.done .tb-l{color:inherit;opacity:.85}
+@media (min-width:900px){.timer-bar{left:auto;right:24px;transform:none;bottom:20px}}
+.timer-bubble{position:fixed;z-index:2100;width:300px;max-width:calc(100vw - 24px);background:var(--paper);color:var(--ink);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);padding:14px;display:grid;gap:4px}
+.timer-bubble .tbb-l{margin:0;color:var(--muted);font-weight:700;font-size:13px;overflow-wrap:anywhere}
+.timer-bubble .tbb-c{margin:0 0 6px;font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
+.timer-bubble .tbb-row{display:flex;flex-wrap:wrap;gap:6px}
+.timer-bubble .btn svg{width:15px;height:15px}
+/* keep toasts clear of the timer bar while timers run */
+body.has-timers .toasts{bottom:calc(var(--tab-h) + 64px + env(safe-area-inset-bottom,0px))}
+@media (min-width:900px){body.has-timers .toasts{bottom:72px}}
+.imp-idle{display:grid;gap:14px}

@@ -1,0 +1,216 @@
+/* Em&m Blog: Lists tab (Recipes · Lists · Special days). Tokens only; list colors are a fixed pastel set (--lc). */
+
+.lists-seg{margin-bottom:18px}
+.lists-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.lists-hint{margin:0;font-family:var(--hand);font-size:21px;line-height:1.1}
+.lsec{animation:viewIn .3s var(--ease) both}
+
+/* ---------- list cards ---------- */
+.list-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:16px}
+.list-card{
+  position:relative;display:grid;gap:6px;text-align:left;border:0;padding:16px 16px 14px;border-radius:var(--r-lg);
+  background:var(--paper);box-shadow:var(--shadow);color:var(--ink);overflow:hidden;min-width:0;
+}
+.list-card::before{content:"";position:absolute;inset:0 0 auto;height:7px;background:var(--lc)}
+.lc-top{display:flex;align-items:center;justify-content:space-between}
+.lc-emoji{width:48px;height:48px;border-radius:16px;background:color-mix(in srgb,var(--lc) 55%,var(--paper));display:grid;place-items:center;font-size:26px;line-height:1}
+.ring{--p:0;width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--pink) calc(var(--p) * 1%),var(--blush) 0);display:grid;place-items:center;transition:background .4s}
+.ring span{width:34px;height:34px;border-radius:50%;background:var(--paper);display:grid;place-items:center;font-size:10.5px;font-weight:800;color:var(--muted)}
+.lc-title{font-family:var(--display);font-size:20px;color:var(--pink);line-height:1.15;overflow-wrap:anywhere}
+.lc-meta{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.lc-preview{display:grid;gap:1px;font-size:14px;font-weight:600;min-height:20px}
+.lc-preview span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lc-bar{display:block;height:7px;border-radius:9px;background:var(--blush);overflow:hidden;margin-top:4px}
+.lc-bar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--rose),var(--pink));transition:width .45s var(--spring)}
+.lc-bar.big{height:10px;flex:1}
+
+/* templates */
+.tpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tpl{border:2px solid var(--line);background:color-mix(in srgb,var(--lc) 30%,var(--paper));border-radius:var(--r-md);padding:10px 6px;display:grid;justify-items:center;gap:2px;font-weight:800;font-size:13px;color:var(--ink);text-align:center;transition:transform .2s var(--spring),border-color .15s;line-height:1.2}
+.tpl .e{font-size:24px;line-height:1.1}
+.tpl small{font-weight:700;color:var(--muted);font-size:11px}
+.tpl:active{transform:scale(.94)}
+.tpl[aria-pressed="true"]{border-color:var(--pink);transform:scale(1.03)}
+
+/* ---------- list detail ---------- */
+.list-sheet .sheet-head h2{position:relative}
+.list-sheet .sheet-head::after{content:"";position:absolute;left:18px;right:18px;bottom:0;height:5px;border-radius:9px;background:var(--lc);opacity:.8}
+.ld-head{display:flex;align-items:center;gap:12px}
+.ld-prog{font-weight:800;font-size:13px;color:var(--muted);white-space:nowrap}
+.add-bar{display:flex;gap:8px;position:sticky;top:-12px;z-index:3;background:var(--paper);padding-block:6px}
+.add-bar .txt{border-radius:var(--r-pill);background:var(--bg)}
+.add-bar .btn{padding:0;width:48px;height:48px;flex:none;border-radius:50%}
+.add-bar .btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round}
+.ld-items{display:grid;gap:10px}
+.ld-group{display:grid;gap:6px}
+.ld-aisle{margin:6px 0 0;font-weight:800;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ld-rows{display:grid;gap:6px}
+.ld-row{position:relative;border-radius:var(--r-md);overflow:hidden;touch-action:pan-y;animation:rowIn .3s var(--spring) both}
+@keyframes rowIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+.ld-swipe-bg{position:absolute;inset:0;background:var(--danger);color:#fff;display:flex;align-items:center;justify-content:flex-end;padding-right:18px;opacity:0;transition:opacity .15s}
+.ld-swipe-bg svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.ld-row.swiping .ld-swipe-bg{opacity:.7}
+.ld-row.armed .ld-swipe-bg{opacity:1}
+.ld-row-in{position:relative;display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:var(--r-md);padding:4px 6px 4px 4px;min-height:52px;transition:transform .25s var(--ease),background-color .2s}
+.ld-check{flex:none;width:44px;height:44px;border:0;background:none;display:grid;place-items:center;padding:0;border-radius:12px}
+.ld-check .box{width:28px;height:28px;border-radius:9px;border:2.5px solid var(--rose);background:var(--paper);display:grid;place-items:center;transition:background-color .2s,border-color .2s,transform .35s var(--spring)}
+.ld-check .box svg{width:18px;height:18px;fill:none;stroke:var(--pink-ink);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;transition:stroke-dashoffset .3s ease .05s}
+.checked .ld-check .box{background:var(--pink);border-color:var(--pink)}
+.checked .ld-check .box svg{stroke-dashoffset:0}
+.pop .ld-check .box{animation:checkPop .45s var(--spring)}
+@keyframes checkPop{0%{transform:scale(1)}35%{transform:scale(.7)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+.ld-check:hover .box{border-color:var(--pink)}
+.ld-text{flex:1;min-width:0;border:0;background:none;text-align:left;padding:6px 4px;display:grid;color:var(--ink);font-weight:700;font-size:15.5px;border-radius:10px}
+.ld-text[disabled]{cursor:default;opacity:1}
+.ld-text .t{position:relative;overflow-wrap:anywhere;width:fit-content;max-width:100%}
+.ld-text .t::after{content:"";position:absolute;left:0;top:55%;height:2px;width:0;background:var(--muted);transition:width .3s ease;border-radius:2px}
+.checked .ld-text{color:var(--muted)}
+.checked .ld-text .t::after{width:100%}
+.ld-text .x{font-size:12.5px;color:var(--muted);font-weight:700}
+.ld-text .x:empty{display:none}
+.ld-qty{display:inline-flex;align-items:center;gap:2px;background:var(--paper);border-radius:var(--r-pill);padding:2px;flex:none}
+.ld-qty b{min-width:20px;text-align:center;font-size:14px;font-variant-numeric:tabular-nums}
+.q{width:30px;height:30px;border-radius:50%;border:0;background:var(--blush);color:var(--pink);font-weight:800;font-size:17px;line-height:1;display:grid;place-items:center;padding:0;transition:transform .2s var(--spring)}
+.q:active{transform:scale(.85)}
+.ld-link{width:36px;height:36px;font-size:16px;text-decoration:none}
+.ld-del{width:36px;height:36px;color:var(--muted);opacity:.55}
+.ld-del svg{width:16px;height:16px}
+.ld-row:hover .ld-del,.ld-del:focus-visible{opacity:1}
+.ld-done summary{cursor:pointer;font-weight:800;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 2px;list-style:none;display:flex;align-items:center;gap:6px}
+.ld-done summary::-webkit-details-marker{display:none}
+.ld-done summary::before{content:"";width:7px;height:7px;border-right:2.5px solid currentColor;border-bottom:2.5px solid currentColor;transform:rotate(-45deg);transition:transform .2s;display:inline-block;margin-right:2px}
+.ld-done[open] summary::before{transform:rotate(45deg)}
+.ld-done .ld-rows{margin-top:6px;opacity:.85}
+.ld-empty-note{margin:0;text-align:center;font-family:var(--hand);font-size:24px;color:var(--muted);padding:10px}
+@media (hover:none){.ld-del{opacity:.5}}
+
+/* ---------- recipes ---------- */
+.rc-bar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.rc-bar .search{flex:1;min-width:200px}
+#recipes-tags{margin-bottom:14px}
+#recipes-tags:empty{display:none}
+.rc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:16px}
+@media (max-width:520px){.rc-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
+.rc-card{border:0;padding:0;background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden;text-align:left;color:var(--ink);display:grid;min-width:0}
+.rc-pic{position:relative;aspect-ratio:4/3;background:linear-gradient(145deg,var(--blush),color-mix(in srgb,var(--rose) 45%,var(--paper)));display:grid;place-items:center;overflow:hidden}
+.rc-pic img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s}
+.rc-pic img.ok{opacity:1}
+.rc-emoji{font-size:52px;line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.12));transition:transform .35s var(--spring)}
+.rc-card:hover .rc-emoji{transform:scale(1.12) rotate(-6deg)}
+.rc-emoji.big{font-size:84px}
+.rc-fav{position:absolute;top:8px;right:8px;font-size:18px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
+.rc-info{padding:10px 14px 13px;display:grid;gap:2px;min-width:0}
+.rc-info b{font-family:var(--display);font-size:17.5px;color:var(--pink);line-height:1.15;overflow-wrap:anywhere}
+.rc-meta{font-size:12.5px;font-weight:700;color:var(--muted)}
+
+/* editor */
+.paste-cta{display:flex;align-items:center;gap:12px;border:2.5px dashed var(--rose);background:var(--bg);border-radius:var(--r-lg);padding:12px 16px;text-align:left;color:var(--ink);transition:transform .2s var(--spring),background-color .15s}
+.paste-cta:hover{background:var(--blush)}
+.paste-cta:active{transform:scale(.98)}
+.paste-cta .e{font-size:28px}
+.paste-cta b{display:block;font-family:var(--display);color:var(--pink);font-size:17px}
+.paste-cta small{color:var(--muted);font-weight:700}
+.rf-top{display:grid;grid-template-columns:160px 1fr;gap:14px;align-items:start}
+@media (max-width:520px){.rf-top{grid-template-columns:1fr}}
+.drop.small{padding:14px;aspect-ratio:1;align-content:center;border-radius:var(--r-lg)}
+@media (max-width:520px){.drop.small{aspect-ratio:auto}}
+.rf-photo-pv{position:relative;border-radius:var(--r-lg);overflow:hidden;aspect-ratio:1;background:var(--blush)}
+.rf-photo-pv img{width:100%;height:100%;object-fit:cover;display:block}
+.rf-photo-pv .icon-btn{position:absolute;top:6px;right:6px;width:34px;height:34px}
+.rf-main{display:grid;gap:12px;min-width:0}
+.rf-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rows-edit{display:grid;gap:6px}
+.re-row{display:flex;align-items:center;gap:6px}
+.re-row .txt{padding:9px 12px;min-width:0;flex:1}
+.re-row textarea.txt{min-height:44px;resize:vertical}
+.re-n{width:22px;flex:none;text-align:center;font-weight:800;color:var(--pink)}
+.re-acts{display:flex;flex:none}
+.re-acts .icon-btn{width:30px;height:30px;font-size:15px;color:var(--muted)}
+.re-acts .icon-btn svg{width:15px;height:15px}
+@media (max-width:420px){.re-acts [data-mv]{display:none}}
+.add-row{justify-self:start}
+.add-row svg,.rv-acts svg{fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round}
+
+/* recipe view */
+.rv-hero{border-radius:var(--r-lg);overflow:hidden;background:linear-gradient(145deg,var(--blush),color-mix(in srgb,var(--rose) 45%,var(--paper)));display:grid;place-items:center;min-height:140px;max-height:340px}
+.rv-hero img{width:100%;height:100%;max-height:340px;object-fit:cover;display:block}
+.rv-meta{display:flex;flex-wrap:wrap;gap:6px}
+.rv-meta:empty{display:none}
+.rv-meta span{background:var(--bg);border-radius:var(--r-pill);padding:4px 12px;font-weight:800;font-size:13px;color:var(--ink)}
+.rv-meta .tag{color:var(--pink)}
+.rv-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.rv-acts .icon-btn[aria-pressed="true"] svg{fill:currentColor}
+.rv-cols{display:grid;gap:8px 28px}
+@media (min-width:760px){.rv-cols{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}}
+.rv-cols .section-label{margin-top:8px}
+.scaler{display:inline-flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;background:var(--bg);border-radius:var(--r-pill);padding:3px}
+.scaler b{font-size:13px;color:var(--ink);min-width:78px;text-align:center;font-variant-numeric:tabular-nums}
+.rv-ing-list{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.rv-ing{display:flex;align-items:center;gap:4px;font-weight:700;border-radius:12px}
+.rv-ing .ld-check{width:38px;height:38px}
+.rv-ing .ld-check .box{width:24px;height:24px;border-radius:8px}
+.rv-ing .ld-check .box svg{width:15px;height:15px}
+.rv-ing .tx{flex:1;cursor:pointer;overflow-wrap:anywhere;transition:color .2s}
+.rv-ing.checked .tx{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px}
+.rv-step-list{margin:0;padding:0;list-style:none;counter-reset:st;display:grid;gap:12px}
+.rv-step-list li{counter-increment:st;display:grid;grid-template-columns:34px 1fr;gap:10px;line-height:1.55;overflow-wrap:anywhere}
+.rv-step-list li::before{content:counter(st);width:30px;height:30px;border-radius:50%;background:var(--blush);color:var(--pink);font-weight:800;display:grid;place-items:center;font-size:14px}
+.rv-step-list li.muted::before{display:none}
+.rv-note{margin-top:14px;background:var(--note-2);border-radius:var(--r-md);padding:12px 14px}
+.rv-note b{font-family:var(--display);color:var(--pink)}
+.rv-note p{margin:4px 0 0;white-space:pre-wrap;font-family:var(--hand);font-size:22px;line-height:1.2}
+
+/* cook mode */
+.cook{background:var(--bg)}
+.cook-wrap{height:100%;width:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr auto auto;max-width:900px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) var(--gutter) max(16px,env(safe-area-inset-bottom))}
+.cook-top{display:flex;align-items:center;gap:12px}
+.cook-title{flex:1;min-width:0;font-family:var(--display);color:var(--pink);font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cook-count{font-weight:800;color:var(--muted);font-size:13px;white-space:nowrap}
+.cook-timers{display:flex;flex-wrap:wrap;gap:8px;padding-top:10px;min-height:10px}
+.cook-timer{display:inline-flex;align-items:center;gap:8px;background:var(--paper);border-radius:var(--r-pill);padding:4px 6px 4px 14px;box-shadow:var(--shadow);font-weight:700;font-size:13px;color:var(--muted)}
+.cook-timer b{font-family:var(--display);color:var(--pink);font-size:18px;font-variant-numeric:tabular-nums}
+.cook-timer.done{background:var(--pink);color:var(--pink-ink);animation:checkPop .6s var(--spring) 3}
+.cook-timer.done b{color:var(--pink-ink)}
+.cook-stage{display:grid;align-content:center;justify-items:center;gap:22px;text-align:center;touch-action:pan-y;user-select:none;overflow-y:auto;padding:18px 4px}
+.cook-step{margin:0;font-family:var(--body);font-weight:700;font-size:clamp(24px,4.6vw,40px);line-height:1.35;color:var(--ink);max-width:28ch;overflow-wrap:anywhere}
+.cook-step.in-r{animation:inR .35s var(--ease) both}
+.cook-step.in-l{animation:inL .35s var(--ease) both}
+@keyframes inR{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+@keyframes inL{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
+.cook-tbtns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.cook-dots{display:flex;justify-content:center;gap:6px;padding:10px 0;flex-wrap:wrap}
+.cook-dots i{width:8px;height:8px;border-radius:50%;background:var(--line);transition:transform .3s var(--spring),background-color .2s}
+.cook-dots i.on{background:var(--pink);transform:scale(1.5)}
+.cook-nav{display:flex;justify-content:space-between;gap:12px}
+.cook-nav .btn{flex:1;max-width:220px;padding-block:14px;font-size:17px}
+.cook-nav svg{fill:none;stroke:currentColor;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- special days ---------- */
+.day-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
+.day-card{
+  position:relative;display:flex;align-items:center;gap:14px;border:0;text-align:left;color:var(--ink);
+  background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:16px 18px 18px;overflow:hidden;min-width:0;
+}
+.day-card.soon{background:linear-gradient(120deg,var(--paper) 55%,var(--blush))}
+.day-card.today{background:linear-gradient(120deg,var(--blush),var(--paper));box-shadow:0 0 0 3px var(--pink),var(--shadow)}
+.day-card.today .dc-emoji{animation:bob 1.6s ease-in-out infinite}
+.dc-emoji{font-size:40px;line-height:1;flex:none;width:58px;height:58px;border-radius:18px;background:var(--bg);display:grid;place-items:center}
+.dc-body{flex:1;min-width:0;display:grid;gap:1px}
+.dc-body b{font-family:var(--display);font-size:19px;color:var(--pink);line-height:1.15;overflow-wrap:anywhere}
+.dc-date{font-size:13px;font-weight:700;color:var(--muted)}
+.dc-years{font-size:13px;font-weight:800;color:var(--ink)}
+.dc-count{text-align:right;flex:none;display:grid;justify-items:end}
+.dc-count b{font-family:var(--display);font-size:38px;color:var(--pink);line-height:1;font-variant-numeric:tabular-nums}
+.dc-count small{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.dc-bar{position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--blush)}
+.dc-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--rose),var(--pink))}
+.day-mems{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:10px}
+.day-mem{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;border:0;background:var(--note-1);border-radius:var(--r-md);padding:10px 14px;text-align:left;color:var(--ink);box-shadow:var(--shadow);min-width:0}
+.day-mem span{grid-row:span 2;font-size:26px}
+.day-mem b{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day-mem small{color:var(--muted);font-weight:700;font-size:12.5px}
+
+/* icon strokes for buttons in this tab and its sheets */
+#view-lists .btn svg,.list-sheet .btn svg,.recipe-sheet .btn svg,.list-sheet .icon-btn svg,.recipe-sheet .icon-btn svg{fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.recipe-sheet #rv-fav[aria-pressed="true"] svg{fill:currentColor}
+.cook-tbtns .btn{background:var(--paper);box-shadow:var(--shadow);font-size:16px;padding:12px 20px}

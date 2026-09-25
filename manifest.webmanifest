@@ -1,0 +1,14 @@
+{
+  "name": "Em&m Blog",
+  "short_name": "Em&m Blog",
+  "description": "A cute diary, pinboard and life planner ♡",
+  "start_url": "./#home",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF6F7",
+  "theme_color": "#FFF6F7",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/app-icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

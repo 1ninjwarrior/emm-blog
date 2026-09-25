@@ -1,0 +1,71 @@
+/* Em&m Blog: the app's "soft paper, one pink" design, layered over the older styles (loaded last).
+   Plain warm paper, no dots; ink titles/numbers (pink only for the primary action + selected states);
+   borderless white cards with one soft shadow; hairlines only on inputs/dividers; Sniglet only for the one big
+   title per tab; Nunito everywhere else; Caveat only for handwriting. */
+
+body{background-image:none}
+/* flower border is opt-in (Me → Flower border); tab headers get a tiny blossom corner instead */
+html:not([data-flowers="on"]) #flowers svg.f{display:none}
+
+/* titles */
+.phead{position:relative;padding-block:26px 14px}
+.phead h1{color:var(--ink);font-size:clamp(30px,5.2vw,44px);line-height:1.05}
+.phead h1 .amp{color:var(--rose)}
+.phead p.sub{font-size:21px;color:var(--muted)}
+.corner{position:absolute;top:6px;right:-6px;width:84px;height:60px;pointer-events:none;opacity:.9}
+.phead .actions{position:relative;z-index:1}
+.card h2,.card h3,.sheet .sheet-head h2,.confirm-dlg h2,.empty h2,.lc-title,.rc-info b,.paste-cta b,.rv-note b,.cook-title,
+.dc-body b,.dmonth,.jtitle,.de-title,.special-card .t b,.about b{font-family:var(--body);font-weight:800;color:var(--ink)}
+.sheet .sheet-head h2{font-size:21px}
+.card h2{font-size:21px}.card h3{font-size:17px}
+.empty h2{font-size:20px}
+.dentry-date b,.dc-count b,.special-card .n,.stats .s b,.cook-timer b{font-family:var(--body);font-weight:800;color:var(--ink)}
+.re-n,.rv-meta .tag,.jtags span,.dentry-fav,.de-fav,.q{color:var(--ink)}
+.rv-step-list li::before{color:var(--ink)}
+
+/* surfaces: no borders, one soft shadow */
+.tabbar{border:0;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.icon-btn{border:0;background:var(--paper);color:var(--ink);box-shadow:var(--shadow)}
+.icon-btn.plain{box-shadow:none;background:transparent}
+.icon-btn.soft{background:var(--blush);box-shadow:none}
+.chip{border:0;background:var(--blush);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--pink);color:var(--pink-ink)}
+.seg{border:0;background:var(--blush)}
+.seg button{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);box-shadow:var(--shadow)}
+.tile{border:0}
+.tile:hover{border:0;box-shadow:inset 0 0 0 2px var(--rose)}
+.tile .e img{display:block;width:44px;height:44px}
+.bpill,.kind,.look,.tpl,.emoji-row button,.de-moods button,.de-weather button{border-color:transparent;background:var(--blush)}
+.bpill[aria-pressed="true"],.kind[aria-pressed="true"],.look[aria-pressed="true"],.tpl[aria-pressed="true"],
+.emoji-row button[aria-pressed="true"],.de-weather button[aria-pressed="true"]{border-color:var(--pink)}
+.bpill.add{border:2px dashed var(--line);background:transparent;color:var(--ink)}
+.sheet .sheet-foot{border-top:1px solid var(--line)}
+.status.preview{border:0;background:var(--blush)}
+.btn{box-shadow:none}
+.btn:active{box-shadow:none}
+.btn.ghost{box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.link{color:var(--ink);text-decoration:underline;text-decoration-color:var(--rose);text-underline-offset:3px}
+.txt,textarea.txt,select.txt{border-width:1px}
+.card.tape::before{display:none}
+.dstreak.hot{animation:none}
+.tab[aria-current="page"]{color:var(--ink)}
+.lbl-create{color:var(--ink)!important}
+.rail-brand{color:var(--ink)!important}
+
+/* Me behind the gear: on phones the Me tab isn't in the bar; the rail shows it at the bottom */
+.tab.rail-only{display:none}
+@media (min-width:900px){ .tab.rail-only{display:grid;margin-top:auto} }
+
+/* shared bits for the newer screens (Today, Garden, Grocery…) */
+.qa-row{display:flex;gap:8px;align-items:center}
+.muted-line{color:var(--muted);font-size:13px;font-weight:600}
+.pbar{height:6px;border-radius:6px;background:var(--blush);overflow:hidden}
+.pbar>i{display:block;height:100%;width:0;background:var(--pink);border-radius:6px;transition:width .4s var(--ease)}
+.cbox{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);background:var(--paper);display:grid;place-items:center;flex:none;padding:0;color:transparent;transition:background-color .15s,border-color .15s,transform .25s var(--spring)}
+.cbox svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.cbox[aria-checked="true"]{background:var(--pink);border-color:var(--pink);color:var(--pink-ink);transform:scale(1.06)}
+.cbox:active{transform:scale(.88)}
+.label-quiet{font-weight:800;font-size:13px;color:var(--muted);margin:18px 2px 8px;display:flex;align-items:center;gap:8px}
+.label-quiet .grow{flex:1}
+.fullscreen.route{background:var(--bg)}

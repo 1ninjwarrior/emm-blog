@@ -1,0 +1,6 @@
+/* Em&m Blog: Me → Your data (backup & restore). */
+.data-card .data-when{font-weight:800;margin:4px 0 0}
+.data-card .data-nudge{background:var(--blush);border-radius:var(--r-md);padding:10px 14px;margin:10px 0 0;font-weight:600;font-size:14px}
+.data-card .data-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.data-card .data-progress{display:grid;gap:6px;margin-top:12px}
+.data-card .note{margin-top:12px}
