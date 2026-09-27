@@ -11,6 +11,7 @@ label.btn{cursor:pointer}
 .imp-err{background:var(--blush);border-radius:var(--r-md);padding:12px 14px;display:grid;gap:6px}
 .imp-err b{font-weight:800}
 .imp-err p{margin:0;color:var(--muted);font-weight:600;font-size:14px}
+.imp-err .imp-tip{color:var(--ink);font-size:13px}
 .imp-working{display:grid;justify-items:center;gap:12px;padding:36px 12px 20px;text-align:center}
 .imp-working p{margin:0;font-weight:700;font-size:16px;min-height:1.5em}
 .imp-spin{font-size:40px;animation:impBob 1.6s ease-in-out infinite}

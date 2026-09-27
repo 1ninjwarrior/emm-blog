@@ -100,6 +100,12 @@ for it once per browser and keeps it in `localStorage` (`emm-import-code`). Foll
 "Found the full recipe on …" banner work like the app. Share links still point at the `/r` page on EAS Hosting; the
 site also accepts pasted share links (and `#receive=…`) and saves them with "Save to my recipes".
 
+YouTube hides a video's captions from servers, and browsers can't fetch them cross-origin (the phone app reads them on
+the device and sends them along). So a YouTube link whose result is weak (`no_recipe_found` / `private_or_blocked`, or
+`confidence: low` without a found full recipe) doesn't close the sheet: it shows "Use it anyway" (when there's a
+recipe), **Paste the transcript**, **Use a photo** and the tip "on YouTube, tap ··· → Show transcript, copy it and
+paste here". A transcript pasted after that is sent as `{url, transcript}` (≤ 40k chars) for that same video.
+
 ## Ask AI to change a recipe
 
 The recipe view has a calm "✨ Ask to change this recipe…" input under the steps (`js/recipes/aiEdit.js`). It POSTs

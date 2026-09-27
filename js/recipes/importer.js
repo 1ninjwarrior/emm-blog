@@ -10,6 +10,9 @@ const CODE_KEY = 'emm-import-code';
 const TIMEOUT_MS = 75000;
 const URL_RE = /https?:\/\/[^\s<>"']+/i;
 const VIDEO_RE = /youtu\.?be|instagram\.com|tiktok\.com/i;
+const YT_RE = /^https?:\/\/([a-z]+\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)\//i;
+const TRANSCRIPT_MAX = 40000; // = the server's IMPORT_TRANSCRIPT_MAX
+const YT_TIP = 'Tip: on YouTube, tap ··· → Show transcript, copy it and paste here';
 
 const STEPS = {
   video: ['Watching the video…', 'Listening for the recipe…', 'Writing down the ingredients…', 'Checking their links…', 'Looking for the full recipe…', 'Tidying up the steps…', 'Almost there… ✨'],
@@ -105,6 +108,15 @@ function errTitle(e) {
 }
 
 /**
+ * YouTube hides a video's captions from servers (and browsers can't read them cross-origin), so a video whose
+ * recipe is only spoken comes back weak on the web. The app reads the captions on the phone instead.
+ */
+function weakYouTube(res) {
+  if ('recipe' in res) return res.confidence === 'low' && !res.foundVia;
+  return res.error === 'no_recipe_found' || res.error === 'private_or_blocked';
+}
+
+/**
  * The import sheet. Callbacks:
  *   onRecipe(res, {kind}) : an OK response (recipe filled in by the caller)
  *   onShared(payload)     : she pasted an Em&m Blog share link
@@ -112,7 +124,9 @@ function errTitle(e) {
  *   shareLinkPayload(t)   : detector (from codec.js)
  */
 export function openImportSheet({ url = '', text = '', onRecipe, onShared, onLocal, shareLinkPayload }) {
-  let abort = null, stepTimer = 0, phase = 'idle', last = { text: '', wasLink: false };
+  let abort = null, stepTimer = 0, phase = 'idle', last = { text: '', wasLink: false, yt: null };
+  let pairWith = null; // a YouTube link whose transcript she's about to paste
+  let weakOk = null; // a weak YouTube answer she can still use
   const s = sheet({
     title: 'Import a recipe ✨',
     className: 'import-sheet',
@@ -163,6 +177,7 @@ export function openImportSheet({ url = '', text = '', onRecipe, onShared, onLoc
 
   const showError = (err) => {
     const box = $s('#imp-err');
+    if (last.yt && weakYouTube(err)) { showYouTubeHelp(err); return; }
     const canLocal = !last.wasLink && err.error === 'server' && last.text.trim() && !linkIn(last.text);
     const btns = [];
     if (err.error === 'unauthorized') { setImportCode(''); showCode(); }
@@ -174,6 +189,33 @@ export function openImportSheet({ url = '', text = '', onRecipe, onShared, onLoc
     box.hidden = false;
   };
 
+  /** A weak YouTube result (or none): offer the transcript / a photo, and keep a usable answer one tap away. */
+  const showYouTubeHelp = (res) => {
+    const box = $s('#imp-err');
+    const ok = 'recipe' in res;
+    weakOk = ok ? res : null;
+    const btns = [
+      ok ? `<button type="button" class="btn small" data-f="use">Use it anyway</button>` : '',
+      `<button type="button" class="btn soft small" data-f="transcript">Paste the transcript</button>`,
+      `<button type="button" class="btn soft small" data-f="photo">Use a photo</button>`,
+    ];
+    const title = ok ? 'We only got part of it' : errTitle(res);
+    const msg = ok
+      ? 'YouTube doesn’t let the website hear what’s said in this video, so amounts may be missing. The app can, or paste the transcript here.'
+      : res.message || '';
+    box.innerHTML = `<b>${esc(title)}</b><p>${esc(msg)}</p><p class="imp-tip">${esc(YT_TIP)}</p><div class="imp-row">${btns.join('')}</div>`;
+    box.hidden = false;
+  };
+
+  const askTranscript = () => {
+    pairWith = last.yt;
+    weakOk = null;
+    input.value = '';
+    input.placeholder = 'Paste the transcript here…';
+    $s('#imp-err').hidden = true;
+    input.focus();
+  };
+
   const run = async (req, kind) => {
     if (abort) abort.abort();
     const ctl = new AbortController();
@@ -183,7 +225,7 @@ export function openImportSheet({ url = '', text = '', onRecipe, onShared, onLoc
     const res = await requestRecipeImport(req, ctl.signal, () => s._step && s._step(STEPS.video.indexOf('Looking for the full recipe…')));
     if (ctl.signal.aborted) return;
     setPhase('idle');
-    if ('recipe' in res) {
+    if ('recipe' in res && !(last.yt && !req.transcript && weakYouTube(res))) {
       s.close('ok');
       onRecipe(res, { kind });
       return;
@@ -207,7 +249,15 @@ export function openImportSheet({ url = '', text = '', onRecipe, onShared, onLoc
     if (shared) { s.close('shared'); onShared(shared); return; }
     if (needCode()) return;
     const link = linkIn(t);
-    last = { text: t, wasLink: !!link };
+    if (pairWith && !link) {
+      // the transcript of the YouTube video she just tried
+      last = { text: t, wasLink: false, yt: pairWith };
+      run({ url: pairWith, transcript: t.slice(0, TRANSCRIPT_MAX) }, 'video');
+      return;
+    }
+    pairWith = null;
+    input.placeholder = 'https://www.youtube.com/shorts/…';
+    last = { text: t, wasLink: !!link, yt: link && YT_RE.test(link) ? link : null };
     if (link) run({ url: link }, VIDEO_RE.test(link) ? 'video' : 'page');
     else run({ text: t }, 'text');
   };
@@ -218,7 +268,7 @@ export function openImportSheet({ url = '', text = '', onRecipe, onShared, onLoc
     const b64 = await photoToBase64(file);
     if (!b64) { setPhase('idle'); toast('Couldn’t open that photo', { emoji: '🥲' }); return; }
     const extra = input.value.trim() && !linkIn(input.value) ? input.value.trim() : undefined;
-    last = { text: input.value, wasLink: false };
+    last = { text: input.value, wasLink: false, yt: null };
     run({ imageBase64: b64, text: extra }, 'photo');
   };
 
@@ -241,6 +291,8 @@ export function openImportSheet({ url = '', text = '', onRecipe, onShared, onLoc
     if (!b) return;
     const f = b.dataset.f;
     if (f === 'caption') { input.value = ''; $s('#imp-err').hidden = true; input.focus(); }
+    if (f === 'transcript') askTranscript();
+    if (f === 'use' && weakOk) { const res = weakOk; weakOk = null; s.close('ok'); onRecipe(res, { kind: 'video' }); }
     if (f === 'photo') photoInput.click();
     if (f === 'local') { s.close('local'); onLocal(last.text); }
     if (f === 'retry') go();
