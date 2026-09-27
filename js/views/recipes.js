@@ -480,12 +480,14 @@ export function openRecipe(id) {
           ${canEdit ? `<button type="button" class="btn link small" id="rv-reset" hidden>uncheck all</button>` : ''}</section>
         <section class="rv-steps"><div class="section-label">Steps</div><ol class="rv-step-list" id="rv-steps"></ol>
           <div id="rv-notes"></div></section>
-      </div>`,
+      </div>
+      ${canEdit ? '<div class="rv-ai" id="rv-ai"></div>' : ''}`,
     foot: `<button type="button" class="btn soft small" id="rv-copy">${icon.copy} Copy</button>
       <button type="button" class="btn soft small" id="rv-image">${icon.download} Save card</button>
-      ${canEdit ? `<button type="button" class="btn soft small" id="rv-edit">${icon.edit} Edit</button><button type="button" class="btn link small" id="rv-del" style="color:var(--danger)">Delete</button>` : ''}`,
-    onClose: () => { if (openView && openView.id === id) openView = null; flushNow('recipes', id); },
+      ${canEdit ? `<button type="button" class="btn link small" id="rv-ai-undo" hidden>${icon.undo || ''} Undo last AI change</button><button type="button" class="btn soft small" id="rv-edit">${icon.edit} Edit</button><button type="button" class="btn link small" id="rv-del" style="color:var(--danger)">Delete</button>` : ''}`,
+    onClose: () => { if (openView && openView.id === id) openView = null; flushNow('recipes', id); if (ai) ai.destroy(); },
   });
+  let ai = null, aiMod = null; // "Ask AI to change this recipe" (js/recipes/aiEdit.js, loaded on open)
   const b = s.body, $b = (x) => b.querySelector(x) || s.foot.querySelector(x);
   let heroFor = null;
   const factor = () => { const r = byId('recipes', id); return r && r.servings ? serv / r.servings : serv; };
@@ -517,6 +519,7 @@ export function openRecipe(id) {
     $b('#rv-notes').innerHTML = (plainNotes ? `<div class="rv-note"><b>Notes ♡</b><p>${esc(plainNotes)}</p></div>` : '')
       + (source && /^https?:\/\//.test(source.url) ? `<a class="rv-source" href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">From: ${esc(source.title)}</a>` : '');
     $b('#rv-cook').disabled = !(r.steps || []).length;
+    if ($b('#rv-ai-undo')) $b('#rv-ai-undo').hidden = !(aiMod && aiMod.hasAiPrev(id));
   };
   const ingNode = (i, f) => {
     const n = h(`<li class="rv-ing${i.checked ? ' checked' : ''}"><button type="button" class="ld-check" aria-pressed="${!!i.checked}" ${canEdit ? '' : 'disabled'} aria-label="${i.checked ? 'Uncheck' : 'Check'} ${esc(i.text)}"><span class="box" aria-hidden="true">${icon.check}</span></button><span class="tx">${esc(scaleLine(i.text, f))}</span></li>`);
@@ -553,11 +556,26 @@ export function openRecipe(id) {
     const { id: rid, ...data } = r;
     try {
       await remove('recipes', rid);
+      if (aiMod) aiMod.clearAiPrev(rid);
       let undone = false;
       toast('Recipe deleted', { undo: () => { undone = true; set('recipes', rid, data).catch((e) => toast(errText(e))); } });
       if (data.photoId) setTimeout(() => { if (!undone) deleteAsset(data.photoId); }, 7000);
     } catch (e) { toast(errText(e)); }
   };
+  if (canEdit) {
+    import('../recipes/aiEdit.js').then((m) => {
+      aiMod = m;
+      if (!b.isConnected) return;
+      ai = m.mountAskAi($b('#rv-ai'), { id, getFactor: factor, onNewRecipe: (nid) => { s.close('ai-new'); setTimeout(() => openRecipe(nid), 240); } });
+      render();
+    }).catch(() => {});
+    $b('#rv-ai-undo').onclick = async () => {
+      if (!(aiMod && aiMod.hasAiPrev(id))) return;
+      const ok = await confirmDlg({ title: 'Undo the last AI change?', message: 'The recipe goes back to how it was before (edits you made since then are undone too).', confirmLabel: 'Undo', emoji: '↩️' });
+      if (!ok || !byId('recipes', id)) return;
+      try { if (await aiMod.undoAiEdit(id)) toast('Back to how it was ♡', { emoji: '↩️' }); render(); } catch (e) { toast(errText(e)); }
+    };
+  }
   openView = { id, render };
   render();
 }

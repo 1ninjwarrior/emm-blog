@@ -79,3 +79,35 @@ label.btn{cursor:pointer}
 body.has-timers .toasts{bottom:calc(var(--tab-h) + 64px + env(safe-area-inset-bottom,0px))}
 @media (min-width:900px){body.has-timers .toasts{bottom:72px}}
 .imp-idle{display:grid;gap:14px}
+
+/* "Ask AI to change this recipe" (js/recipes/aiEdit.js): calm input under the recipe + the preview sheet */
+.rv-ai{margin-top:18px}
+.ai-ask{display:flex;align-items:flex-end;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:6px 6px 6px 14px}
+.ai-input{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-weight:600;font-size:15px;line-height:1.4;resize:none;padding:6px 0;min-height:22px;max-height:130px;outline:none}
+.ai-input::placeholder{color:var(--muted)}
+.ai-ask:focus-within{border-color:var(--rose)}
+.ai-send{flex:none;width:34px;height:34px;border-radius:50%;border:0;display:grid;place-items:center;background:var(--pink);color:var(--pink-ink);cursor:pointer;transition:opacity .15s ease-out}
+.ai-send:disabled{background:var(--blush);color:var(--muted);cursor:default}
+.ai-send svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.ai-code{display:grid;gap:4px;margin-top:8px;font-size:13px;color:var(--muted);font-weight:600}
+.ai-progress,.ai-err{margin:8px 0 0 6px;font-size:13.5px;font-weight:600}
+.ai-progress{color:var(--muted);animation:aiFade .25s ease-out}
+.ai-err{color:var(--ink)}
+@keyframes aiFade{from{opacity:0}to{opacity:1}}
+.ai-summary{margin:0;font-weight:700;font-size:16px;line-height:1.45}
+.ai-tip,.ai-meta{margin:8px 0 0;color:var(--muted);font-size:13.5px;font-weight:600}
+.ai-sheet .section-label{margin-top:16px}
+.ai-list{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:2px}
+.ai-list li{display:flex;gap:10px;align-items:flex-start;padding:5px 8px;margin:0 -8px;border-radius:12px;line-height:1.45}
+.ai-list li.new,.ai-list li.changed{background:color-mix(in srgb,var(--pink) 7%,transparent)}
+.ai-list .tx{flex:1;min-width:0}
+.ai-list .was{display:block;color:var(--muted);font-size:12.5px}
+.ai-list.steps .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--blush);display:grid;place-items:center;font-weight:800;font-size:12.5px}
+.ai-mark{flex:none;font-size:11.5px;font-weight:800;border-radius:999px;padding:1px 7px;margin-top:2px;background:color-mix(in srgb,var(--pink) 20%,transparent)}
+.ai-mark.soft{background:color-mix(in srgb,var(--pink) 11%,transparent)}
+.ai-removed{margin-top:14px;color:var(--muted);font-size:13.5px;font-weight:600}
+.ai-removed summary{cursor:pointer}
+.ai-removed s{display:block;margin-top:4px}
+.ai-refine{margin-top:16px}
+.ai-sheet .sheet-foot .grow{flex:1}
+@media (prefers-reduced-motion:reduce){.ai-progress{animation:none}}

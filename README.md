@@ -100,6 +100,16 @@ for it once per browser and keeps it in `localStorage` (`emm-import-code`). Foll
 "Found the full recipe on …" banner work like the app. Share links still point at the `/r` page on EAS Hosting; the
 site also accepts pasted share links (and `#receive=…`) and saves them with "Save to my recipes".
 
+## Ask AI to change a recipe
+
+The recipe view has a calm "✨ Ask to change this recipe…" input under the steps (`js/recipes/aiEdit.js`). It POSTs
+`{recipe, request}` to `https://emm-blog-app.expo.app/api/recipe-edit` (same CORS + the same per-browser import code
+as imports) and shows a **preview** sheet: the summary, the updated recipe with `new` / `edited` markers, a collapsed
+"Removed" list, a "Tweak it…" follow-up input (applies to the preview), **Save changes** (in place; toast Undo, and the
+previous version goes to kv `recipe_prev_<id>` for the view's "Undo last AI change"), **Save as a new recipe**
+("Title (label)", own copy of the photo), Try again and Discard. The AI always gets the recipe at its saved servings.
+The highlight logic is the app's `editDiff.ts` (transpiled into `js/app/recipes/editDiff.js`).
+
 ## Build
 
 `node tools/build.mjs` regenerates `js/config.js`, `js/app/**` (transpiled with the app's TypeScript: `.js` import
