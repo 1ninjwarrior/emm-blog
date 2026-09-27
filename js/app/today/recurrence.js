@@ -263,3 +263,65 @@ export function snapshotOf(plan, limit = 8) {
 }
 /** Title with the optional emoji in front. */
 export const displayTitle = (t) => (t.emoji ? `${t.emoji} ${t.title}` : t.title);
+/**
+ * Per-day counts for `from`..`to` (inclusive) in one pass, for the month calendar (≤ 42 days).
+ * Matches `buildDayPlan(…).total/doneCount` for every day: repeating tasks count on each
+ * occurrence (skipped = hidden, ticked per date), one-off tasks on their due date (ticked via
+ * ONCE); on `today` also the open overdue one-offs and one-offs/anytime tasks ticked today.
+ * `routines` (optional) hides chores of switched-off routines. Days with nothing are left out.
+ */
+export function countsForRange(tasks, done, from, to, opts = {}) {
+    const out = new Map();
+    if (to < from)
+        return out;
+    const idx = opts.doneIdx ?? indexDone(done);
+    const enabled = opts.routines ? new Set(opts.routines.filter((r) => r.enabled).map((r) => r.id)) : null;
+    const today = opts.today;
+    const days = [];
+    for (let d = from; d <= to; d = addDays(d, 1))
+        days.push(d);
+    const add = (date, isDone) => {
+        const c = out.get(date) ?? { total: 0, done: 0 };
+        c.total++;
+        if (isDone)
+            c.done++;
+        out.set(date, c);
+    };
+    const todayIn = !!today && today >= from && today <= to;
+    for (const t of tasks) {
+        if (t.archived)
+            continue;
+        if (t.routineId && enabled && !enabled.has(t.routineId))
+            continue;
+        if (t.repeat) {
+            const anchor = anchorOf(t);
+            for (const d of days) {
+                if (d < anchor || !occursOn(t, d))
+                    continue;
+                const mark = idx.get(`${t.id}|${d}`);
+                if (mark?.skipped)
+                    continue;
+                add(d, !!mark);
+            }
+            continue;
+        }
+        const mark = idx.get(`${t.id}|${ONCE}`);
+        if (t.dueDate && t.dueDate >= from && t.dueDate <= to)
+            add(t.dueDate, !!mark);
+        if (!todayIn || t.dueDate === today)
+            continue;
+        const doneToday = !!mark && keyOfTime(mark.doneAt) === today;
+        // today also lists open overdue one-offs and anything (earlier / anytime) ticked today
+        if (t.dueDate && t.dueDate < today && (!mark || doneToday))
+            add(today, !!mark);
+        else if (!t.dueDate && doneToday)
+            add(today, true);
+    }
+    return out;
+}
+/** The 42 day keys (6 weeks, Sunday first) a month grid shows for `year`/`month0` (0-based month). */
+export function monthGridDays(year, month0) {
+    const first = new Date(year, month0, 1);
+    const start = addDays(toKey(first), -first.getDay());
+    return Array.from({ length: 42 }, (_, i) => addDays(start, i));
+}

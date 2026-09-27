@@ -332,6 +332,11 @@ const PREP_WORDS = /\b(fresh(?:ly)?|large|small|medium|big|chopped|diced|minced|
 const TAIL_JUNK = /\b(to taste|for (?:garnish|serving|frying|greasing|dusting|topping)|as needed|or more|plus more.*|if needed|at room temperature)\b.*$/i;
 const SKIP = new Set(['water', 'ice water', 'boiling water', 'warm water', 'cold water', 'hot water', 'tap water']);
 const PURCHASE_UNITS = new Set(['lb', 'kg', 'can', 'jar', 'bunch', 'head', 'pack', 'bag', 'bottle', 'box', 'dozen', 'loaf', 'carton', 'tub', 'block', 'gallon', 'quart', 'pint', 'bar', 'roll', 'tube', 'pouch']);
+/** An ingredient name without prep/size words and "to taste"-style tails: "Finely chopped fresh parsley" -> "parsley". */
+export function cleanIngredientName(name) {
+    const clean = name.replace(TAIL_JUNK, '').replace(PREP_WORDS, ' ').replace(/\s+/g, ' ').replace(/^(?:of|and)\s+/i, '').trim();
+    return clean || name;
+}
 /**
  * "2 cups flour, sifted" -> { name: 'Flour', qty: null, need: '2 cups' }
  * "3 large eggs"         -> { name: 'Eggs', qty: '3', need: null }
@@ -342,9 +347,7 @@ export function ingredientToGrocery(line) {
     // "1 (14 oz) can tomatoes" -> "1 can tomatoes"
     // "~2 tbsp oil" (an AI-estimated amount) reads like "2 tbsp oil"
     const base = ingredientToItem(line.replace(/^\s*[~≈]\s*/, '').replace(/\s*\([^)]*\)\s*/g, ' ').trim());
-    let clean = base.text.replace(TAIL_JUNK, '').replace(PREP_WORDS, ' ').replace(/\s+/g, ' ').replace(/^(?:of|and)\s+/i, '').trim();
-    if (!clean)
-        clean = base.text;
+    const clean = cleanIngredientName(base.text);
     if (SKIP.has(keyOf(clean)) || SKIP.has(clean.toLowerCase()))
         return null;
     // exact first (so "diced tomatoes" stays canned), then the cleaned-up name

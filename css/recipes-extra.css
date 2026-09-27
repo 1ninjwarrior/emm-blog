@@ -112,3 +112,27 @@ body.has-timers .toasts{bottom:calc(var(--tab-h) + 64px + env(safe-area-inset-bo
 .ai-refine{margin-top:16px}
 .ai-sheet .sheet-foot .grow{flex:1}
 @media (prefers-reduced-motion:reduce){.ai-progress{animation:none}}
+
+/* "For this step" ingredient lists (js/recipes/stepIngs.js): recipe view block + cook mode list */
+.rv-step-body{display:grid;gap:8px;min-width:0}
+.rv-sing{background:var(--bg);border-radius:var(--r-md);padding:8px 12px 6px;display:grid}
+.rv-sing-lbl{font-size:13px;font-weight:700;color:var(--muted)}
+.rv-sing-row,.cook-sing-row{display:flex;align-items:center;gap:10px;border:0;background:none;padding:5px 0;text-align:left;color:var(--ink);font:inherit;font-size:15px;line-height:1.35;cursor:pointer;border-radius:10px}
+.rv-sing-row:disabled{cursor:default}
+.rv-sing-row .box,.cook-sing-row .box{flex:none;width:20px;height:20px;border-radius:7px;border:2.2px solid var(--rose);background:var(--paper);display:grid;place-items:center;transition:background-color .2s,border-color .2s}
+.rv-sing-row .box svg,.cook-sing-row .box svg{width:13px;height:13px;fill:none;stroke:var(--pink-ink);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;transition:stroke-dashoffset .3s ease .05s}
+.rv-sing-row.checked .box,.cook-sing-row.checked .box{background:var(--pink);border-color:var(--pink)}
+.rv-sing-row.checked .box svg,.cook-sing-row.checked .box svg{stroke-dashoffset:0}
+.rv-sing-row.pop .box,.cook-sing-row.pop .box{animation:checkPop .45s var(--ease)}
+.rv-sing-row .tx,.cook-sing-row .tx{flex:1;min-width:0;overflow-wrap:anywhere;transition:color .2s}
+.rv-sing-row .tx b,.cook-sing-row .tx b{font-weight:800}
+.rv-sing-row .tx small{color:var(--muted);font-weight:700;font-size:12.5px;margin-left:4px}
+.rv-sing-row.checked .tx,.cook-sing-row.checked .tx{color:var(--muted);text-decoration:line-through}
+.rv-sing-more{justify-self:start;border:0;background:none;color:var(--muted);font:inherit;font-weight:800;font-size:13.5px;padding:4px 8px 4px 0;cursor:pointer}
+.cook-sing{width:min(100%,560px);background:var(--paper);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:14px 18px 10px;display:grid;text-align:left}
+.cook-sing-lbl{font-weight:800;color:var(--muted);font-size:15px;margin-bottom:2px}
+.cook-sing-row{gap:14px;padding:8px 0;font-size:clamp(18px,3.4vw,22px);font-weight:600}
+.cook-sing-row .box{width:28px;height:28px;border-radius:9px;border-width:2.5px}
+.cook-sing-row .box svg{width:18px;height:18px}
+.cook-sing-row .tx b{font-weight:900}
+.cook-sing-row .tx small{display:block;color:var(--muted);font-weight:700;font-size:14px}

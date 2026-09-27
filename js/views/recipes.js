@@ -488,6 +488,9 @@ export function openRecipe(id) {
     onClose: () => { if (openView && openView.id === id) openView = null; flushNow('recipes', id); if (ai) ai.destroy(); },
   });
   let ai = null, aiMod = null; // "Ask AI to change this recipe" (js/recipes/aiEdit.js, loaded on open)
+  // "For this step" lists (js/recipes/stepIngs.js + the app's matcher, loaded on open)
+  let sing = null, singM = null, stepsKey = '';
+  const moreOpen = new Set();
   const b = s.body, $b = (x) => b.querySelector(x) || s.foot.querySelector(x);
   let heroFor = null;
   const factor = () => { const r = byId('recipes', id); return r && r.servings ? serv / r.servings : serv; };
@@ -514,7 +517,12 @@ export function openRecipe(id) {
     if (!ings.length) $b('#rv-ings').innerHTML = '<li class="muted">No ingredients yet.</li>';
     const reset = $b('#rv-reset');
     if (reset) reset.hidden = !ings.some((i) => i.checked);
-    $b('#rv-steps').innerHTML = (r.steps || []).length ? r.steps.map((x) => `<li>${esc(x.text)}</li>`).join('') : '<li class="muted">No steps yet.</li>';
+    const rows = sing && singM ? sing.stepRows(singM, r, f) : null;
+    const html = (r.steps || []).length
+      ? r.steps.map((x, k) => `<li><div class="rv-step-body"><span>${esc(x.text)}</span>${rows ? sing.blockHTML(singM, r, x.id, rows[k], f, { open: moreOpen.has(x.id), canEdit }) : ''}</div></li>`).join('')
+      : '<li class="muted">No steps yet.</li>';
+    if (html !== stepsKey) { stepsKey = html; $b('#rv-steps').innerHTML = html; }
+    if (sing) sing.ensureStepIngs(id);
     const { notes: plainNotes, source } = splitSource(r.notes || '');
     $b('#rv-notes').innerHTML = (plainNotes ? `<div class="rv-note"><b>Notes ♡</b><p>${esc(plainNotes)}</p></div>` : '')
       + (source && /^https?:\/\//.test(source.url) ? `<a class="rv-source" href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">From: ${esc(source.title)}</a>` : '');
@@ -525,7 +533,21 @@ export function openRecipe(id) {
     const n = h(`<li class="rv-ing${i.checked ? ' checked' : ''}"><button type="button" class="ld-check" aria-pressed="${!!i.checked}" ${canEdit ? '' : 'disabled'} aria-label="${i.checked ? 'Uncheck' : 'Check'} ${esc(i.text)}"><span class="box" aria-hidden="true">${icon.check}</span></button><span class="tx">${esc(scaleLine(i.text, f))}</span></li>`);
     return n;
   };
-  b.addEventListener('click', (e) => {
+  b.addEventListener('click', async (e) => {
+    const more = e.target.closest('.rv-sing-more');
+    if (more) { moreOpen.add(more.dataset.more); render(); return; }
+    const row = e.target.closest('.rv-sing-row');
+    if (row && canEdit && sing && singM) {
+      const r = byId('recipes', id);
+      const k = (r.steps || []).findIndex((x) => x.id === row.dataset.step);
+      const l = k >= 0 ? sing.stepRows(singM, r, factor())[k].find((x) => x.i === +row.dataset.i) : null;
+      if (!l) return;
+      row.classList.toggle('checked'); row.classList.add('pop');
+      const ings = await sing.toggleRow(r, row.dataset.step, l);
+      if (ings) patchSoon('recipes', id, { ingredients: ings }, 300).catch((err) => toast(errText(err)));
+      render();
+      return;
+    }
     const li = e.target.closest('.rv-ing');
     if (li && canEdit && (e.target.closest('.ld-check') || e.target.closest('.tx'))) {
       const r = byId('recipes', id);
@@ -536,7 +558,7 @@ export function openRecipe(id) {
   });
   $b('#rv-serv-minus').onclick = () => { const r = byId('recipes', id); serv = r.servings ? Math.max(1, serv - 1) : Math.max(0.5, serv - 0.5); render(); };
   $b('#rv-serv-plus').onclick = () => { const r = byId('recipes', id); serv = r.servings ? Math.min(99, serv + 1) : Math.min(20, serv + 0.5); render(); };
-  if ($b('#rv-reset')) $b('#rv-reset').onclick = () => { const r = byId('recipes', id); patchSoon('recipes', id, { ingredients: r.ingredients.map((x) => ({ ...x, checked: false })) }, 50); };
+  if ($b('#rv-reset')) $b('#rv-reset').onclick = () => { const r = byId('recipes', id); patchSoon('recipes', id, { ingredients: r.ingredients.map((x) => ({ ...x, checked: false })) }, 50); if (sing) sing.clearStepChecks(id); };
   if ($b('#rv-fav')) $b('#rv-fav').onclick = (e) => {
     const r = byId('recipes', id);
     patchSoon('recipes', id, { favorite: !r.favorite }, 300);
@@ -576,6 +598,11 @@ export function openRecipe(id) {
       try { if (await aiMod.undoAiEdit(id)) toast('Back to how it was ♡', { emoji: '↩️' }); render(); } catch (e) { toast(errText(e)); }
     };
   }
+  import('../recipes/stepIngs.js').then(async (m) => {
+    const mm = await m.loadMatcher();
+    sing = m; singM = mm;
+    if (b.isConnected) render();
+  }).catch((e) => console.warn('step ingredients', e));
   openView = { id, render };
   render();
 }
@@ -657,7 +684,7 @@ async function cookMode(id, f) {
       <header class="cook-top"><button type="button" class="icon-btn" id="cook-close" aria-label="Close cook mode">${icon.close}</button>
         <b class="cook-title">${esc(r.emoji || '🍰')} ${esc(r.title)}</b><span class="cook-count" id="cook-count"></span></header>
       <div class="cook-timers" id="cook-timers" aria-live="polite"></div>
-      <div class="cook-stage" id="cook-stage"><p class="cook-step" id="cook-step"></p><div class="cook-tbtns" id="cook-tbtns"></div></div>
+      <div class="cook-stage" id="cook-stage"><p class="cook-step" id="cook-step"></p><div id="cook-sing"></div><div class="cook-tbtns" id="cook-tbtns"></div></div>
       <div class="cook-dots" id="cook-dots" aria-hidden="true">${steps.map(() => '<i></i>').join('')}</div>
       <footer class="cook-nav"><button type="button" class="btn soft" id="cook-prev">${icon.back} Back</button><button type="button" class="btn" id="cook-next">Next ${icon.next}</button></footer>
     </div>`;
@@ -669,11 +696,21 @@ async function cookMode(id, f) {
     p.textContent = st.text;
     p.classList.remove('in-l', 'in-r'); void p.offsetWidth;
     if (dir) p.classList.add(dir > 0 ? 'in-r' : 'in-l');
+    drawSing();
     $f('#cook-tbtns').innerHTML = findTimers(st.text).map((t, k) => `<button type="button" class="btn soft" data-t="${k}" id="cook-timer-${i}-${k}">${icon.timer} Start ${esc(t.label)} timer</button>`).join('');
     [...$f('#cook-dots').children].forEach((d, k) => d.classList.toggle('on', k === i));
     $f('#cook-prev').disabled = i === 0;
     $f('#cook-next').innerHTML = i === steps.length - 1 ? 'Done! 🎉' : `Next ${icon.next}`;
   };
+  // "You'll need for this step" (js/recipes/stepIngs.js; appears once the matcher has loaded)
+  let sing = null, singM = null;
+  const drawSing = () => {
+    const host = $f('#cook-sing');
+    const rr = byId('recipes', id);
+    if (!host || !sing || !singM || !rr || !rr.steps[i]) return;
+    host.innerHTML = sing.cookHTML(singM, rr, rr.steps[i].id, sing.stepRows(singM, rr, f)[i] || [], f);
+  };
+  import('../recipes/stepIngs.js').then(async (m) => { singM = await m.loadMatcher(); sing = m; drawSing(); }).catch(() => {});
   const go = (d) => {
     if (d > 0 && i === steps.length - 1) { confetti({ emoji: '🎉' + (r.emoji || '🍰'), count: 90 }); toast('Bon appétit ♡', { emoji: r.emoji || '🍰' }); fs.close('done'); return; }
     const n = clamp(i + d, 0, steps.length - 1);
@@ -694,6 +731,17 @@ async function cookMode(id, f) {
       const t = findTimers(steps[i].text)[+e.target.closest('[data-t]').dataset.t];
       startTimer(`${r.emoji || '🍰'} step ${i + 1} · ${t.label}`, t.seconds, `${id}:${i}:${t.label}`);
     } else if (e.target.closest('[data-stop]')) { stopTimer(e.target.closest('[data-stop]').dataset.stop); }
+    else if (e.target.closest('.cook-sing-row') && sing && singM && state.canWrite) {
+      const row = e.target.closest('.cook-sing-row');
+      const rr = byId('recipes', id);
+      const l = (sing.stepRows(singM, rr, f)[i] || []).find((x) => x.i === +row.dataset.i);
+      if (!l) return;
+      row.classList.toggle('checked'); row.classList.add('pop');
+      sing.toggleRow(rr, row.dataset.step, l).then((ings) => {
+        if (ings) patchSoon('recipes', id, { ingredients: ings }, 300).catch((err) => toast(errText(err)));
+        drawSing();
+      }).catch((err) => toast(errText(err)));
+    }
   });
   fs.el.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === ' ') { if (!e.target.closest('button') || e.key === 'ArrowRight') { e.preventDefault(); go(1); } }

@@ -116,6 +116,16 @@ previous version goes to kv `recipe_prev_<id>` for the view's "Undo last AI chan
 ("Title (label)", own copy of the photo), Try again and Discard. The AI always gets the recipe at its saved servings.
 The highlight logic is the app's `editDiff.ts` (transpiled into `js/app/recipes/editDiff.js`).
 
+**For this step** (`js/recipes/stepIngs.js`): under each step of the recipe view (and in cook mode as "You’ll need for
+this step") the ingredient lines that step uses, with amounts scaled by the servings scaler (portions too: "half the
+butter" → "3 tbsp  of 6 tbsp"). The instant guess is the app's matcher (`stepIngredients.ts`, transpiled into
+`js/app/recipes/stepIngredients.js`; loads the grocery catalog). When the browser has the import code and the recipe
+has no mapping for its current texts yet, it POSTs `{ingredients, steps}` once to
+`https://emm-blog-app.expo.app/api/recipe-step-ingredients` and stores the answer on the steps (`ings: [{i, amount?}]` +
+`ingsSig`, same as the app; an edit that changes the texts makes it stale → local guess until the next fetch; a failed
+fetch is retried after 30 min, kv `recipe_step_ings_tried:<id>`). Ticks: a step that uses a whole line shares the
+main ingredient checkmark; a portion has its own per-step tick in kv `recipe_step_checks:<id>` ("uncheck all" clears them).
+
 ## Build
 
 `node tools/build.mjs` regenerates `js/config.js`, `js/app/**` (transpiled with the app's TypeScript: `.js` import

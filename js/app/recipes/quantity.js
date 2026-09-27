@@ -133,7 +133,7 @@ export function ingredientToItem(line) {
     return { text: name.charAt(0).toUpperCase() + name.slice(1), qty: qty && qty !== '1' ? qty : qty };
 }
 const TIME_RE = /(\d+(?:[.,]\d+)?|[½¼¾])\s*(?:(?:-|–|to)\s*(\d+(?:[.,]\d+)?)\s*)?(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)\b/gi;
-/** Find "10 minutes", "1-2 hrs", "30 sec" in a step. Uses the lower end of a range. */
+/** Find "10 minutes", "1-2 hrs", "30 sec" in a step (one timer per distinct duration). Uses the lower end of a range. */
 export function findTimers(step) {
     const out = [];
     for (const m of step.matchAll(TIME_RE)) {
@@ -145,6 +145,9 @@ export function findTimers(step) {
         const mult = unit.startsWith('h') ? 3600 : unit.startsWith('s') ? 1 : 60;
         const seconds = Math.round(n * mult);
         if (seconds < 5 || seconds > 24 * 3600)
+            continue;
+        // a step often repeats the same time ("natural release for 10 minutes… after 10 minutes, vent"): one timer each
+        if (out.some((t) => t.seconds === seconds))
             continue;
         out.push({ label: m[0].trim(), seconds });
         if (out.length >= 3)
