@@ -93,7 +93,8 @@ export function stepTimers(text) {
   while ((m = re.exec(text))) {
     const n = parseFloat(m[2] || m[1]);
     const min = /^h/i.test(m[3]) ? n * 60 : n;
-    if (min > 0 && min <= 24 * 60) out.push({ min, label: m[0] });
+    // one timer per distinct duration (steps often repeat "10 minutes")
+    if (min > 0 && min <= 24 * 60 && !out.some((t) => t.min === min)) out.push({ min, label: m[0] });
   }
   return out;
 }
