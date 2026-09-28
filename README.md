@@ -126,6 +126,18 @@ has no mapping for its current texts yet, it POSTs `{ingredients, steps}` once t
 fetch is retried after 30 min, kv `recipe_step_ings_tried:<id>`). Ticks: a step that uses a whole line shares the
 main ingredient checkmark; a portion has its own per-step tick in kv `recipe_step_checks:<id>` ("uncheck all" clears them).
 
+**Step video** (`js/recipes/stepVideo.js`): steps can carry the app's clips (`clip: {start, end, v}`, from an app
+backup import; the editor keeps them). ONE YouTube player (IFrame API from `youtube.com/iframe_api`, `youtube-nocookie`,
+`playsinline`) per view, never one per step: in the recipe view each clip step gets a "▶ 0:42" chip; the first tap
+mounts a sticky mini-player at the top of the steps (Step N · times · Full video · ×), later taps only `seekTo` +
+`playVideo` it; × destroys it (so does opening cook mode or closing the sheet). Cook mode docks the player above the
+step (collapsible slim bar, `prefs` `cook-video` = `collapsed|open`): on open it primes the first clip (muted play to
+the first frame, then paused at the start, so the first tap is instant); **Next / Back / swipe start the step's clip
+right away**; a step without a clip pauses and folds it ("No clip for this step"). A 250 ms watcher pauses at the clip's
+end → "Replay step" / "Keep watching" (carries on past the end). If unmuted autoplay is refused it plays muted with
+"🔇 Tap for sound"; embed/network errors → thumbnail + "Open on YouTube". Clip math/validation is the app's
+`clipTypes.ts` (transpiled into `js/app/recipes/clipTypes.js`). Debug: `window.__emmStepVideo` (`mounts`, `status`, `player`).
+
 ## Build
 
 `node tools/build.mjs` regenerates `js/config.js`, `js/app/**` (transpiled with the app's TypeScript: `.js` import

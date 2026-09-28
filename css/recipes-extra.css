@@ -136,3 +136,51 @@ body.has-timers .toasts{bottom:calc(var(--tab-h) + 64px + env(safe-area-inset-bo
 .cook-sing-row .box svg{width:18px;height:18px}
 .cook-sing-row .tx b{font-weight:900}
 .cook-sing-row .tx small{display:block;color:var(--muted);font-weight:700;font-size:14px}
+
+/* ---------- step video: one YouTube player per recipe view / cook mode (js/recipes/stepVideo.js) ---------- */
+.sv{position:relative;aspect-ratio:16/9;width:100%;border-radius:var(--r-lg);overflow:hidden;background:var(--blush)}
+.sv-frame,.sv-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.sv-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.9;transition:opacity .25s ease-out;pointer-events:none}
+.sv:not([data-status="loading"]):not([data-status="error"]) .sv-thumb{opacity:0}
+.sv[data-status="error"] .sv-thumb{opacity:.45}
+.sv-cover{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-wrap:wrap;align-content:center;gap:8px;padding:10px;border:0;background:color-mix(in srgb,var(--ink) 14%,transparent);cursor:pointer;font:inherit}
+.sv[data-status="cued"] .sv-cue,.sv[data-status="ended"] .sv-end,.sv[data-status="none"] .sv-none,.sv[data-status="error"] .sv-err{display:flex}
+.sv-end{background:color-mix(in srgb,var(--ink) 28%,transparent);cursor:default}
+.sv-none{background:var(--blush);color:var(--muted);font-weight:700;font-size:14px;cursor:default}
+.sv-err{background:none;cursor:default}
+.sv-pill{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:var(--r-pill);background:var(--paper);color:var(--ink);padding:8px 14px;font:inherit;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;transition:transform .2s ease-out}
+.sv-pill.soft{background:var(--blush)}
+.sv-pill:active{transform:scale(.95)}
+.sv-pill svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.sv-cue .sv-pill svg,.sv-err .sv-pill svg{fill:currentColor}
+.sv-sound{position:absolute;top:10px;right:10px;border:0;border-radius:var(--r-pill);background:var(--paper);color:var(--ink);padding:6px 12px;font:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.sv-sound[hidden]{display:none}
+
+/* recipe view: the mini-player sticks to the top of the steps while she scrolls */
+.rv-clip{align-self:start;justify-self:start;padding:4px 12px;font-size:13px}
+.rv-clip svg{width:13px;height:13px;fill:currentColor}
+.rv-video{position:sticky;top:0;z-index:3;background:var(--paper);border-radius:calc(var(--r-lg) + 6px);box-shadow:var(--shadow);padding:6px 8px 8px;margin-bottom:10px;max-width:520px;animation:svIn .22s ease-out both}
+.rv-video[hidden]{display:none}
+.rv-video-head{display:flex;align-items:center;gap:10px;padding:0 0 6px 6px}
+.rv-video-head b{flex:1;min-width:0;font-weight:800;font-size:14.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rv-video-head b span{color:var(--muted);font-weight:700;margin-left:6px}
+.rv-video-full{color:var(--muted);font-weight:700;font-size:13px}
+.rv-video-head .icon-btn{width:32px;height:32px;box-shadow:none}
+.rv-video-head .icon-btn svg{width:16px;height:16px}
+@keyframes svIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* cook mode: docked above the step, collapsible to a slim bar (prefs `cook-video`) */
+.cook-wrap:has(.cook-video){grid-template-rows:auto auto auto 1fr auto auto}
+.cook-video{width:min(100%,640px);justify-self:center;padding-top:8px}
+.cook-video-bar{width:100%;display:flex;align-items:center;gap:8px;border:0;border-radius:14px;background:var(--blush);color:var(--ink);padding:8px 12px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;text-align:left}
+.cook-video-bar b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cook-video-bar svg{width:15px;height:15px;flex:none;fill:none;stroke:var(--muted);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .24s ease-out}
+.cook-video-bar svg:first-child{fill:var(--muted);stroke:none;width:12px;height:12px}
+.cook-video.noclip .cook-video-bar{color:var(--muted)}
+.cook-video.shut .cook-video-bar svg:last-child{transform:rotate(180deg)}
+.cook-video-body{display:grid;grid-template-rows:1fr;transition:grid-template-rows .24s ease-out}
+.cook-video.shut .cook-video-body{grid-template-rows:0fr}
+.cook-video-in{min-height:0;overflow:hidden}
+.cook-video-in>div{padding-top:8px}
+@media (max-height:700px){.cook-video{width:min(100%,420px)}}
+@media (prefers-reduced-motion:reduce){.cook-video-body,.cook-video-bar svg,.sv-thumb{transition:none}.rv-video{animation:none}}

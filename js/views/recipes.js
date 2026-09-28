@@ -1,7 +1,8 @@
 // Em&m Blog: Recipes section (inside the Lists tab).
 //
 // recipes doc: {title, emoji, photoId, servings, prepMin, cookMin, ingredients:[{id,text,checked}],
-//               steps:[{id,text}], notes, tags:[], favorite, createdAt, updatedAt}
+//               steps:[{id,text,clip?:{start,end,v}}], notes, tags:[], favorite, createdAt, updatedAt}
+// Step clips come from the app (backup import); js/recipes/stepVideo.js plays them in ONE player per view.
 import { state, ready, watch, add, set, remove, patchSoon, flushNow, prefs, newId, items, byId, blobSrc, deleteAsset, errText, thumbSrc } from '../store.js';
 import { esc, h, sheet, fullscreen, confirmDlg, toast, confetti, reconcile, emptyHTML, icon, choose, clamp, debounce, keepAwake, fileDrop, loadImage, reducedMotion } from '../ui.js';
 import { copyText, saveCanvas, makeCanvas, roundRect, drawText, tokens, dottedBg, tape, wrapLines } from '../share.js';
@@ -9,6 +10,7 @@ import { uploadPhoto } from '../posts.js';
 import { splitSource, withSource, hostOf } from '../app/recipes/source.js';
 import { findTimers } from '../app/recipes/quantity.js';
 import { startTimer, onTimers, stopTimer, fmtClock } from '../recipes/timers.js';
+import { clipAt, createStepVideo, formatClipTime, watchUrl } from '../recipes/stepVideo.js';
 
 const RECIPE_EMOJI = ['🍰', '🧁', '🍪', '🍝', '🍜', '🥗', '🍲', '🥞', '🍕', '🌮', '🍛', '🥘', '🍓', '🍋', '☕', '🍵'];
 
@@ -429,7 +431,7 @@ function recipeForm(r0, { prefill = null, note = null } = {}) {
       title, emoji: v.emoji, photoId: v.photoId || null,
       servings: num('#recipe-servings') || null, prepMin: num('#recipe-prep'), cookMin: num('#recipe-cook'),
       ingredients: v.ingredients.filter((i) => i.text.trim()).map((i) => ({ id: i.id, text: i.text.trim(), checked: !!i.checked })),
-      steps: v.steps.filter((x) => x.text.trim()).map((x) => ({ id: x.id, text: x.text.trim() })),
+      steps: v.steps.filter((x) => x.text.trim()).map((x) => ({ id: x.id, text: x.text.trim(), ...(x.clip ? { clip: x.clip } : {}) })), // a step keeps its video clip (like the app)
       tags: [...new Set($b('#recipe-tags').value.split(',').map((t) => t.trim().toLowerCase().replace(/^#/, '')).filter(Boolean))].slice(0, 12),
       notes: $b('#recipe-notes').value.trim(),
       updatedAt: now,
@@ -478,15 +480,20 @@ export function openRecipe(id) {
           <span class="scaler" id="rv-scaler"><button type="button" class="q" id="rv-serv-minus" aria-label="Fewer servings">−</button><b id="rv-serv"></b><button type="button" class="q" id="rv-serv-plus" aria-label="More servings">+</button></span></div>
           <ul class="rv-ing-list" id="rv-ings"></ul>
           ${canEdit ? `<button type="button" class="btn link small" id="rv-reset" hidden>uncheck all</button>` : ''}</section>
-        <section class="rv-steps"><div class="section-label">Steps</div><ol class="rv-step-list" id="rv-steps"></ol>
+        <section class="rv-steps"><div class="section-label">Steps</div>
+          <div class="rv-video" id="rv-video" hidden><div class="rv-video-head"><b id="rv-video-title"></b><a class="rv-video-full" id="rv-video-full" target="_blank" rel="noopener noreferrer">Full video</a><button type="button" class="icon-btn small" id="rv-video-close" aria-label="Close the video">${icon.close}</button></div><div id="rv-video-host"></div></div>
+          <ol class="rv-step-list" id="rv-steps"></ol>
           <div id="rv-notes"></div></section>
       </div>
       ${canEdit ? '<div class="rv-ai" id="rv-ai"></div>' : ''}`,
     foot: `<button type="button" class="btn soft small" id="rv-copy">${icon.copy} Copy</button>
       <button type="button" class="btn soft small" id="rv-image">${icon.download} Save card</button>
       ${canEdit ? `<button type="button" class="btn link small" id="rv-ai-undo" hidden>${icon.undo || ''} Undo last AI change</button><button type="button" class="btn soft small" id="rv-edit">${icon.edit} Edit</button><button type="button" class="btn link small" id="rv-del" style="color:var(--danger)">Delete</button>` : ''}`,
-    onClose: () => { if (openView && openView.id === id) openView = null; flushNow('recipes', id); if (ai) ai.destroy(); },
+    onClose: () => { if (openView && openView.id === id) openView = null; flushNow('recipes', id); if (ai) ai.destroy(); closeVideo(); },
   });
+  // one step-video player for this recipe view: mounted on the first "▶ 0:42" tap, then every chip just seeks it
+  let video = null, videoStep = -1;
+  const closeVideo = () => { if (video) video.destroy(); video = null; videoStep = -1; const d = b.querySelector('#rv-video'); if (d) d.hidden = true; };
   let ai = null, aiMod = null; // "Ask AI to change this recipe" (js/recipes/aiEdit.js, loaded on open)
   // "For this step" lists (js/recipes/stepIngs.js + the app's matcher, loaded on open)
   let sing = null, singM = null, stepsKey = '';
@@ -519,7 +526,7 @@ export function openRecipe(id) {
     if (reset) reset.hidden = !ings.some((i) => i.checked);
     const rows = sing && singM ? sing.stepRows(singM, r, f) : null;
     const html = (r.steps || []).length
-      ? r.steps.map((x, k) => `<li><div class="rv-step-body"><span>${esc(x.text)}</span>${rows ? sing.blockHTML(singM, r, x.id, rows[k], f, { open: moreOpen.has(x.id), canEdit }) : ''}</div></li>`).join('')
+      ? r.steps.map((x, k) => { const t = clipAt(r, k); return `<li><div class="rv-step-body"><span>${esc(x.text)}</span>${t ? `<button type="button" class="chip rv-clip" data-clip="${k}" aria-pressed="${videoStep === k}" aria-label="Play step ${k + 1}'s video clip">${icon.play}${formatClipTime(t.clip.start)}</button>` : ''}${rows ? sing.blockHTML(singM, r, x.id, rows[k], f, { open: moreOpen.has(x.id), canEdit }) : ''}</div></li>`; }).join('')
       : '<li class="muted">No steps yet.</li>';
     if (html !== stepsKey) { stepsKey = html; $b('#rv-steps').innerHTML = html; }
     if (sing) sing.ensureStepIngs(id);
@@ -534,6 +541,23 @@ export function openRecipe(id) {
     return n;
   };
   b.addEventListener('click', async (e) => {
+    const clipBtn = e.target.closest('.rv-clip');
+    if (clipBtn) {
+      const k = +clipBtn.dataset.clip;
+      const t = clipAt(byId('recipes', id), k);
+      if (!t) return;
+      const dock = $b('#rv-video');
+      dock.hidden = false;
+      $b('#rv-video-title').innerHTML = `Step ${k + 1} <span>${formatClipTime(t.clip.start)}–${formatClipTime(t.clip.end)}</span>`;
+      $b('#rv-video-full').href = watchUrl(t.videoId, t.clip.start);
+      if (!video) video = createStepVideo($b('#rv-video-host'), { initial: t, play: true });
+      else video.play(t);
+      videoStep = k;
+      render();
+      dock.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+      return;
+    }
+    if (e.target.closest('#rv-video-close')) { closeVideo(); render(); return; }
     const more = e.target.closest('.rv-sing-more');
     if (more) { moreOpen.add(more.dataset.more); render(); return; }
     const row = e.target.closest('.rv-sing-row');
@@ -564,7 +588,7 @@ export function openRecipe(id) {
     patchSoon('recipes', id, { favorite: !r.favorite }, 300);
     if (!r.favorite) { const rc = e.currentTarget.getBoundingClientRect(); confetti({ emoji: '💖', x: rc.left + 20, y: rc.top + 20, count: 24 }); }
   };
-  $b('#rv-cook').onclick = () => cookMode(id, factor());
+  $b('#rv-cook').onclick = () => { closeVideo(); render(); cookMode(id, factor()); };
   if ($b('#rv-shop')) $b('#rv-shop').onclick = () => openAddToGrocery(byId('recipes', id), factor());
   $b('#rv-send').onclick = async () => (await import('../recipes/sharing.js')).sendRecipeLink(byId('recipes', id));
   $b('#rv-copy').onclick = () => copyText(recipeAsText(byId('recipes', id), factor()), 'Recipe copied ♡');
@@ -674,16 +698,21 @@ async function cookMode(id, f) {
   let i = 0;
   let release = () => {};
   let tick = 0;
+  // one step-video player for the whole session: cues the first clip now, then each Next/Back seeks + plays
+  let video = null;
+  const firstClip = steps.map((_, k) => clipAt(r, k)).find(Boolean) || null;
+  let videoShut = prefs.get('cook-video') === 'collapsed';
   const fs = fullscreen({
     className: 'cook',
     label: 'Cook mode',
-    onClose: () => { release(); if (tick && tick.clear) tick.clear(); },
+    onClose: () => { release(); if (tick && tick.clear) tick.clear(); if (video) video.destroy(); video = null; },
   });
   keepAwake().then((rel) => { release = rel; }).catch(() => {});
   fs.el.innerHTML = `<div class="cook-wrap">
       <header class="cook-top"><button type="button" class="icon-btn" id="cook-close" aria-label="Close cook mode">${icon.close}</button>
         <b class="cook-title">${esc(r.emoji || '🍰')} ${esc(r.title)}</b><span class="cook-count" id="cook-count"></span></header>
       <div class="cook-timers" id="cook-timers" aria-live="polite"></div>
+      ${firstClip ? `<div class="cook-video" id="cook-video"><button type="button" class="cook-video-bar" id="cook-video-bar" aria-expanded="true">${icon.play}<b id="cook-video-label"></b>${icon.up}</button><div class="cook-video-body"><div class="cook-video-in"><div id="cook-video-host"></div></div></div></div>` : ''}
       <div class="cook-stage" id="cook-stage"><p class="cook-step" id="cook-step"></p><div id="cook-sing"></div><div class="cook-tbtns" id="cook-tbtns"></div></div>
       <div class="cook-dots" id="cook-dots" aria-hidden="true">${steps.map(() => '<i></i>').join('')}</div>
       <footer class="cook-nav"><button type="button" class="btn soft" id="cook-prev">${icon.back} Back</button><button type="button" class="btn" id="cook-next">Next ${icon.next}</button></footer>
@@ -701,6 +730,25 @@ async function cookMode(id, f) {
     [...$f('#cook-dots').children].forEach((d, k) => d.classList.toggle('on', k === i));
     $f('#cook-prev').disabled = i === 0;
     $f('#cook-next').innerHTML = i === steps.length - 1 ? 'Done! 🎉' : `Next ${icon.next}`;
+    showVideo(dir);
+  };
+  const showVideo = (dir) => {
+    if (!firstClip) return;
+    const t = clipAt(r, i);
+    const box = $f('#cook-video');
+    box.classList.toggle('shut', videoShut || !t);
+    box.classList.toggle('noclip', !t);
+    $f('#cook-video-bar').setAttribute('aria-expanded', String(!videoShut));
+    $f('#cook-video-label').textContent = t ? `${t.label} · ${formatClipTime(t.clip.start)}` : 'No clip for this step';
+    if (!video) {
+      video = createStepVideo($f('#cook-video-host'), { initial: t || firstClip });
+      if (!t) video.pause();
+      return;
+    }
+    if (!dir) return;
+    if (!t) video.pause();
+    else if (videoShut) video.cue(t);
+    else video.play(t); // Next / Back starts the step's clip right away
   };
   // "You'll need for this step" (js/recipes/stepIngs.js; appears once the matcher has loaded)
   let sing = null, singM = null;
@@ -724,7 +772,13 @@ async function cookMode(id, f) {
   const offTimers = onTimers(drawTimers);
   tick = { clear: offTimers };
   fs.el.addEventListener('click', (e) => {
-    if (e.target.closest('#cook-close')) fs.close('x');
+    if (e.target.closest('#cook-video-bar')) {
+      videoShut = !videoShut;
+      prefs.set('cook-video', videoShut ? 'collapsed' : 'open');
+      const t = clipAt(r, i);
+      if (video && t) video.cue(t); // hiding it stops the video (back at the step's start)
+      showVideo(0);
+    } else if (e.target.closest('#cook-close')) fs.close('x');
     else if (e.target.closest('#cook-prev')) go(-1);
     else if (e.target.closest('#cook-next')) go(1);
     else if (e.target.closest('[data-t]')) {
