@@ -26,6 +26,7 @@ export const COLLS = {
   tasks: { field: 'createdAt', dir: 'asc', limit: 2000 },
   taskDone: { field: 'date', dir: 'desc', limit: 5000 }, // id = taskId|date
   routines: { field: 'sort', dir: 'asc', limit: 100 },
+  events: { field: 'date', dir: 'asc', limit: 2000 }, // calendar events (app v5)
   // Habit Garden
   habits: { field: 'sort', dir: 'asc', limit: 200 },
   habitChecks: { field: 'date', dir: 'desc', limit: 10000 }, // id = habitId|date

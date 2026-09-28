@@ -58,6 +58,7 @@ function countsOf(cols, mediaCount) {
     lists: (cols.lists || []).length,
     tasks: (cols.tasks || []).filter((t) => !t.routineId).length,
     routines: (cols.routines || []).length,
+    events: (cols.events || []).length,
     habits: (cols.habits || []).length,
     countdowns: (cols.countdowns || []).length,
     media: mediaCount,
@@ -73,6 +74,7 @@ export function describeCounts(c) {
   add(c.lists, 'list', 'lists');
   add(c.tasks, 'task', 'tasks');
   add(c.routines, 'routine', 'routines');
+  add(c.events, 'event', 'events');
   add(c.habits, 'habit', 'habits');
   add(c.countdowns, 'special day', 'special days');
   add(c.boards, 'board', 'boards');
@@ -267,7 +269,12 @@ function mapApp(db, zip) {
     config: J(r.config_json, null), sort: N(r.sort) || 0, createdAt: N(r.created_at) || Date.now() }));
   cols.tasks = rows(db, 'tasks').map((r) => ({ id: r.id, title: r.title || '', notes: r.notes || '', emoji: r.emoji || null, area: r.area || null,
     dueDate: r.due_date || null, dueTime: r.due_time || null, repeat: J(r.repeat_json, null), routineId: r.routine_id || null,
-    sort: N(r.sort) || 0, createdAt: N(r.created_at) || Date.now(), updatedAt: N(r.updated_at) || Date.now(), archived: B(r.archived) }));
+    sort: N(r.sort) || 0, createdAt: N(r.created_at) || Date.now(), updatedAt: N(r.updated_at) || Date.now(), archived: B(r.archived),
+    reminders: J(r.reminders_json, []) || [] }));
+  // v5 calendar events (older app backups have no table: rows() gives [])
+  cols.events = rows(db, 'events').map((r) => ({ id: r.id, title: r.title || '', emoji: r.emoji || null, date: r.date, allDay: B(r.all_day) || !r.start_time,
+    start: B(r.all_day) ? null : r.start_time || null, end: B(r.all_day) ? null : r.end_time || null, location: r.location || '', notes: r.notes || '',
+    repeat: J(r.repeat_json, null), color: N(r.color) || 0, reminders: J(r.reminders_json, []) || [], createdAt: N(r.created_at) || Date.now(), updatedAt: N(r.updated_at) || Date.now() }));
   cols.taskDone = rows(db, 'task_done').map((r) => ({ id: `${r.task_id}|${r.date}`, taskId: r.task_id, date: r.date, doneAt: N(r.done_at) || Date.now(), skipped: B(r.skipped) }));
   cols.habits = rows(db, 'habits').map((r) => ({ id: r.id, title: r.title || '', emoji: r.emoji || null, species: r.species || 'tulip',
     schedule: J(r.schedule_json, { k: 'daily' }), reminder: r.reminder || null, sort: N(r.sort) || 0, createdAt: N(r.created_at) || Date.now(),

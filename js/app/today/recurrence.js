@@ -109,6 +109,14 @@ export function formatTime(hhmm) {
     const hr = ((h + 11) % 12) + 1;
     return `${hr}:${pad(m || 0)} ${h >= 12 ? 'PM' : 'AM'}`;
 }
+/** "7:00 – 8:30 PM", "11:30 AM – 1:00 PM" (just the start when there's no end) */
+export function formatTimeRange(start, end) {
+    const a = formatTime(start);
+    if (!end)
+        return a;
+    const b = formatTime(end);
+    return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -3)} – ${b}` : `${a} – ${b}`;
+}
 const listDays = (days, long) => {
     const names = [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => (long ? DAY_NAMES[d] : DAY_SHORT[d]));
     return names.length <= 2 ? names.join(' & ') : `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
@@ -316,6 +324,19 @@ export function countsForRange(tasks, done, from, to, opts = {}) {
             add(today, !!mark);
         else if (!t.dueDate && doneToday)
             add(today, true);
+    }
+    if (opts.events?.length) {
+        for (const d of days) {
+            let n = 0;
+            for (const e of opts.events)
+                if (d >= e.date && occursOn({ dueDate: e.date, repeat: e.repeat, createdAt: e.createdAt }, d))
+                    n++;
+            if (!n)
+                continue;
+            const c = out.get(d) ?? { total: 0, done: 0 };
+            c.events = n;
+            out.set(d, c);
+        }
     }
     return out;
 }

@@ -33,6 +33,8 @@ js/share.js             canvas → file (downloads / share sheet), copy text, ca
 js/posts.js days.js demo.js     post helpers, special-day math, ?demo sample data (memory mode only)
 js/views/home.js        boards, pin grid, viewer, composer, Today card slot, special day card, ⚙ → #me
 js/views/today.js       Today planner, Home Today card, quick add, task sheet, routines editor (#routines)
+js/views/events.js      calendar events ("Happening", Upcoming, event sheet), reminder chips (stored like the app; they ring on the
+                        phone; optional browser notifications only while the tab is open). Long-press/right-click a day to add to it.
 js/views/garden.js      Habit Garden (#garden), Today's garden row + habits (mountGardenInToday)
 js/views/lists.js       Lists tab host + lists; shopping lists get the grocery detail, walk card, addToShoppingList
 js/views/recipes.js     recipes grid/editor/viewer/cook mode, import + receive entry points

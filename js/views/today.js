@@ -5,6 +5,7 @@
 // tasks     {title, notes, emoji, area, dueDate, dueTime, repeat, routineId, sort, createdAt, updatedAt, archived}
 // taskDone  id `${taskId}|${key}` {taskId, date ('once' | occurrence date), doneAt, skipped}
 // routines  {name, kind, emoji, enabled, config:{mode, labels}, sort, createdAt}
+// events    see events.js (calendar events; never ticked, shown in "Happening" + Upcoming). Tasks may carry `reminders`.
 import { watch, items, byId, add, set, update, remove, batch, loaded, newId } from '../store.js';
 import { $, esc, sheet, fullscreen, confirmDlg, choose, toast, confetti, icon, ic, cornerHTML, reducedMotion } from '../ui.js';
 import {
@@ -13,12 +14,16 @@ import {
 } from '../app/today/recurrence.js';
 import { parseTask } from '../app/today/parseTask.js';
 import { TEMPLATES, templateFor, AREAS } from '../app/today/templates.js';
+import { looksLikeEvent } from '../app/today/events.js';
+import { fitReminders, normalizeReminders, defaultReminder, describeReminders } from '../app/today/reminders.js';
+import { happeningHTML, eventCount, upcomingHTML, openEventSheet, createEvent, reminderChips, armTabPings, bell } from './events.js';
 
 // ------------------------------------------------------------------ data
 const toTask = (d) => ({
   id: d.id, title: d.title || '', notes: d.notes || '', emoji: d.emoji || null, area: d.area || null,
   dueDate: d.dueDate || null, dueTime: d.dueTime || null, repeat: d.repeat || null, routineId: d.routineId || null,
   sort: d.sort || 0, createdAt: d.createdAt || 0, updatedAt: d.updatedAt || 0, archived: !!d.archived,
+  reminders: normalizeReminders(d.reminders),
 });
 const toRoutine = (d) => ({
   id: d.id, name: d.name || '', kind: d.kind || 'custom', emoji: d.emoji || null, enabled: d.enabled !== false,
@@ -49,7 +54,7 @@ function planInput() {
 }
 function planFor(date, today = todayKey(), input = planInput()) { return buildDayPlan(input, date, today, indexDone(input.done)); }
 
-const ready = Promise.all(['tasks', 'taskDone', 'routines'].map(loaded));
+const ready = Promise.all(['tasks', 'taskDone', 'routines', 'events'].map(loaded));
 const listeners = new Set();
 let scheduled = false;
 function changed() {
@@ -57,14 +62,15 @@ function changed() {
   scheduled = true;
   requestAnimationFrame(() => { scheduled = false; listeners.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } }); });
 }
-['tasks', 'taskDone', 'routines'].forEach((n) => watch(n, changed));
+['tasks', 'taskDone', 'routines', 'events'].forEach((n) => watch(n, changed));
+ready.then(armTabPings);
 
 export async function createTask(v) {
   const now = Date.now();
   return add('tasks', {
     title: v.title.trim(), notes: v.notes || '', emoji: v.emoji || null, area: v.area || null,
     dueDate: v.dueDate ?? null, dueTime: v.dueTime ?? null, repeat: v.repeat ?? null, routineId: v.routineId ?? null,
-    sort: v.sort ?? 0, createdAt: now, updatedAt: now, archived: false,
+    sort: v.sort ?? 0, createdAt: now, updatedAt: now, archived: false, reminders: normalizeReminders(v.reminders || []),
   });
 }
 async function updateTask(id, patch) {
@@ -197,10 +203,11 @@ const routineTitle = (g, date) => `${g.routine.name}${g.label ? ` · ${DAY_NAMES
 function rowHTML(o, today, inRoutine = false, mini = false) {
   const meta = mini ? (o.overdue ? 'from earlier' : '') : metaOf(o, today, inRoutine);
   const time = o.task.dueTime ? formatTime(o.task.dueTime) : '';
+  const rings = !o.done && o.task.reminders && o.task.reminders.length && (o.task.dueDate || o.task.repeat);
   return `<div class="tk-row${o.done ? ' done' : ''}" data-id="${esc(o.task.id)}" data-dk="${esc(o.doneKey)}" data-date="${esc(o.date)}">
     <button type="button" class="cbox" role="checkbox" aria-checked="${o.done}" aria-label="${o.done ? 'Not done' : 'Done'}: ${esc(o.task.title)}" data-act="tick">${checkSvg}</button>
     <button type="button" class="tk-main" data-act="open"><span class="tk-title">${esc(displayTitle(o.task))}</span>${meta ? `<span class="tk-meta">${esc(meta)}</span>` : ''}</button>
-    ${time ? `<span class="tk-time">${esc(time)}</span>` : ''}
+    ${rings ? `<span class="tk-time" aria-label="Reminder on">${bell(14)}</span>` : ''}${time ? `<span class="tk-time">${esc(time)}</span>` : ''}
     <button type="button" class="icon-btn plain tk-more" data-act="more" aria-label="More for ${esc(o.task.title)}">${icon.more}</button>
   </div>`;
 }
@@ -314,7 +321,7 @@ function kindOf(r) {
   return r.k;
 }
 /** Chip-based day/time/repeat editor. Controlled: value {date, time, repeat}; onChange(next). */
-function whenEditor(box, value0, onChange) {
+function whenEditor(box, value0, onChange, event = false) {
   let value = { ...value0 };
   const today = todayKey();
   const chip = (label, on, attrs) => `<button type="button" class="chip small" aria-pressed="${!!on}" ${attrs}>${esc(label)}</button>`;
@@ -330,9 +337,9 @@ function whenEditor(box, value0, onChange) {
       <div class="we-sec"><div class="lbl">${repeating ? 'Starts' : 'Day'}</div><div class="chips">
         ${chip('Today', value.date === today, 'data-d="today"')}${chip('Tomorrow', value.date === tomorrow, 'data-d="tomorrow"')}
         <label class="chip small we-date" aria-pressed="${!!customDate}">${customDate ? esc(describeDate(value.date, today)) : 'Pick a day'}<input type="date" data-d="pick" value="${esc(value.date || '')}" aria-label="Pick a day"></label>
-        ${repeating ? '' : chip('Anytime', !value.date, 'data-d="none"')}</div></div>
+        ${repeating || event ? '' : chip('Anytime', !value.date, 'data-d="none"')}</div></div>
       <div class="we-sec"><div class="lbl">Time</div><div class="chips">
-        ${chip('No time', !value.time, 'data-t=""')}${TIME_PRESETS.map((p) => chip(p.label, value.time === p.t, `data-t="${p.t}"`)).join('')}
+        ${chip(event ? 'All day' : 'No time', !value.time, 'data-t=""')}${TIME_PRESETS.map((p) => chip(p.label, value.time === p.t, `data-t="${p.t}"`)).join('')}
         <label class="chip small we-date" aria-pressed="${!!customTime}">${customTime ? esc(formatTime(value.time)) : 'Exact time'}<input type="time" data-t="pick" value="${esc(value.time || '')}" aria-label="Exact time"></label></div></div>
       <div class="we-sec"><div class="lbl">Repeat</div><div class="chips">
         ${[['none', 'Never'], ['daily', 'Daily'], ['weekdays', 'Weekdays'], ['weekly', 'Weekly'], ['monthly', 'Monthly'], ['yearly', 'Yearly']].map(([k, l]) => chip(l, kind === k, `data-r="${k}"`)).join('')}</div>
@@ -389,7 +396,7 @@ function whenEditor(box, value0, onChange) {
   draw();
   return { get: () => value };
 }
-function openWhenSheet(value, title = 'When?') {
+export function openWhenSheet(value, title = 'When?', event = false) {
   return new Promise((resolve) => {
     let out = null, cur = value;
     const s = sheet({
@@ -397,7 +404,7 @@ function openWhenSheet(value, title = 'When?') {
       foot: `<button type="button" class="btn soft" data-a="x">Cancel</button><button type="button" class="btn" data-a="ok">Done</button>`,
       onClose: () => resolve(out),
     });
-    whenEditor($('.we', s.body), value, (v) => { cur = v; });
+    whenEditor($('.we', s.body), value, (v) => { cur = v; }, event);
     s.foot.onclick = (e) => { const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'ok') out = cur; s.close(a.dataset.a); };
   });
 }
@@ -407,32 +414,62 @@ function openWhenSheet(value, title = 'When?') {
  * The natural-language add bar. Enter adds and keeps focus; the chip under it shows what it understood
  * ("Fri · 3:00 PM"); tap it to adjust. getFallback() = the day being viewed (when no day is said).
  */
-function quickAddBar(box, { getFallback, autofocus = false, onAdded } = {}) {
+function quickAddBar(box, { getFallback, autofocus = false, onAdded, kind: kind0 = 'task', toggle = false } = {}) {
   box.innerHTML = `<form class="qa" autocomplete="off">
+      ${toggle ? `<div class="seg qa-kind" role="group" aria-label="Add a"><button type="button" data-k="task">Task</button><button type="button" data-k="event">Event</button></div>` : ''}
       <div class="qa-field"><span class="qa-plus" aria-hidden="true">${svgI('plus', 18)}</span>
       <input class="txt qa-input" name="q" placeholder="Add a task… “laundry tomorrow”" aria-label="Add a task" enterkeyhint="done" maxlength="200" ${autofocus ? 'autofocus' : ''}>
       <button type="submit" class="btn small qa-add" hidden>Add</button></div>
-      <button type="button" class="chip small qa-chip" hidden aria-label="Change when"></button>
+      <div class="chips qa-chips" hidden><button type="button" class="chip small qa-chip" aria-label="Change when"></button>
+        <button type="button" class="chip small qa-bell" aria-label="Reminder"></button>
+        <button type="button" class="chip small qa-ev" hidden>📅 Event?</button></div>
+      <div class="qa-rem" hidden></div>
     </form>`;
   const form = $('form', box), input = $('.qa-input', box), chipEl = $('.qa-chip', box), addBtn = $('.qa-add', box);
-  let override = null;
+  const chips = $('.qa-chips', box), bellEl = $('.qa-bell', box), evEl = $('.qa-ev', box), remBox = $('.qa-rem', box);
+  let override = null, kind = kind0, reminders = [], remUi = null;
   const today = () => todayKey();
   const whenOf = (text) => {
-    if (override) return override;
-    const p = parseTask(text, today());
-    return { date: p.date ?? (p.anytime || p.repeat ? null : getFallback()), time: p.time, repeat: p.repeat };
+    let w = override;
+    if (!w) {
+      const p = parseTask(text, today());
+      w = { date: p.date ?? (p.anytime || p.repeat ? null : getFallback()), time: p.time, repeat: p.repeat };
+    }
+    return kind === 'event' && !w.date ? { ...w, date: getFallback() || today() } : w;
   };
   const refresh = () => {
     const has = !!input.value.trim();
-    chipEl.hidden = !has; addBtn.hidden = !has;
-    if (has) chipEl.innerHTML = `${svgI(whenOf(input.value).repeat ? 'repeat' : 'calendar', 15)} ${esc(describeWhen(whenOf(input.value), today()))}`;
+    chips.hidden = !has; addBtn.hidden = !has;
+    input.placeholder = kind === 'event' ? 'Add an event… “dinner with mom fri 7pm”' : 'Add a task… “laundry tomorrow”';
+    box.querySelectorAll('[data-k]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === kind)));
+    if (!has) { remBox.hidden = true; return; }
+    const w = whenOf(input.value);
+    chipEl.innerHTML = `${svgI(w.repeat ? 'repeat' : 'calendar', 15)} ${esc(kind === 'event' && !w.time ? describeWhen(w, today()) + ' · All day' : describeWhen(w, today()))}`;
+    const can = kind === 'event' || !!w.date || !!w.repeat;
+    const shown = can ? fitReminders(reminders, !!w.time) : [];
+    bellEl.hidden = !can;
+    bellEl.innerHTML = `${bell(14)}${shown.length ? ' ' + esc(shown.length > 1 ? `${shown.length} reminders` : describeReminders(shown, !!w.time)) : ''}`;
+    bellEl.setAttribute('aria-pressed', String(shown.length > 0));
+    if (remUi) remUi.setTimed(!!w.time);
+    evEl.hidden = !(kind === 'task' && looksLikeEvent(input.value, parseTask(input.value, today())));
+    evEl.textContent = toggle ? '📅 Looks like an event · make it one' : '📅 Event?';
   };
+  const setKind = (k) => { kind = k; refresh(); input.focus(); };
   input.addEventListener('input', refresh);
+  box.addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (b) setKind(b.dataset.k); });
+  evEl.onclick = () => setKind('event');
   chipEl.onclick = async () => {
-    const v = await openWhenSheet(whenOf(input.value));
+    const v = await openWhenSheet(whenOf(input.value), 'When?', kind === 'event');
     if (v) override = v;
     refresh();
     input.focus();
+  };
+  bellEl.onclick = () => {
+    const w = whenOf(input.value);
+    if (!reminders.length) reminders = [defaultReminder(!!w.time)];
+    remBox.hidden = !remBox.hidden || !reminders.length;
+    if (!remUi) remUi = reminderChips(remBox, reminders, !!w.time, (v) => { reminders = v; refresh(); });
+    refresh();
   };
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -441,19 +478,32 @@ function quickAddBar(box, { getFallback, autofocus = false, onAdded } = {}) {
     const title = p.title || (override ? text.trim() : '');
     if (!title) { toast('Give it a name ♡', { emoji: '✏️' }); return; }
     const w = whenOf(text);
-    input.value = ''; override = null; refresh(); input.focus();
-    await createTask({ title, dueDate: w.date, dueTime: w.time, repeat: w.repeat });
-    if (w.repeat) toast(`Added · ${describeRepeat(w.repeat)} ♡`);
-    else if (w.date !== getFallback()) toast(`Added ${w.date ? `for ${describeDate(w.date, today())}` : 'to Anytime'} ♡`);
+    const rs = fitReminders(reminders, !!w.time);
+    input.value = ''; override = null; reminders = []; remUi = null; remBox.innerHTML = ''; remBox.hidden = true;
+    const wasEvent = kind === 'event';
+    if (!toggle) kind = 'task';
+    refresh(); input.focus();
+    if (wasEvent) {
+      await createEvent({ title, date: w.date, start: w.time, allDay: !w.time, repeat: w.repeat, reminders: rs });
+      toast(`Event added · ${w.repeat ? describeRepeat(w.repeat) : describeDate(w.date, today())}${w.time ? ` · ${formatTime(w.time)}` : ''} ♡`, { emoji: '📅' });
+    } else {
+      await createTask({ title, dueDate: w.date, dueTime: w.time, repeat: w.repeat, reminders: w.date || w.repeat ? rs : [] });
+      if (w.repeat) toast(`Added · ${describeRepeat(w.repeat)} ♡`);
+      else if (w.date !== getFallback()) toast(`Added ${w.date ? `for ${describeDate(w.date, today())}` : 'to Anytime'} ♡`);
+    }
+    armTabPings();
     onAdded && onAdded(w);
   };
+  refresh();
   return { input, set(text) { input.value = text; refresh(); } };
 }
 
-/** The global quick add (Create → Task, Home card "Add"). */
-export function openQuickAdd(dateKey = null) {
-  const s = sheet({ title: 'Add a task', body: '<div class="qa-host"></div><p class="note muted">Try “water plants every 3 days” or “dentist Friday 3pm”.</p>' });
-  quickAddBar($('.qa-host', s.body), { getFallback: () => dateKey || todayKey(), autofocus: true });
+/** The global quick add (Create → Task, Home card "Add"): Task | Event. */
+export function openQuickAdd(dateKey = null, kind = 'task') {
+  const t = todayKey();
+  const title = dateKey && dateKey !== t ? `Add to ${describeDate(dateKey, t) === 'Tomorrow' ? 'tomorrow' : longDate(dateKey)}` : 'Add something';
+  const s = sheet({ title, body: '<div class="qa-host"></div><p class="note muted">Try “dentist Friday 3pm” or “dinner with mom fri 7pm” ♡</p>' });
+  quickAddBar($('.qa-host', s.body), { getFallback: () => dateKey || todayKey(), autofocus: true, kind, toggle: true });
   setTimeout(() => $('.qa-input', s.body)?.focus(), 80);
   return s;
 }
@@ -470,13 +520,20 @@ export function openTaskSheet(id) {
     title: 'Edit task',
     body: `<div class="field"><label class="lbl" for="ts-title">Task</label><input class="txt" id="ts-title" maxlength="200" value="${esc(t.title)}" placeholder="What needs doing?"></div>
       <div class="field"><span class="lbl">When</span><button type="button" class="chip ts-when">${svgI('calendar', 15)} <span></span></button></div>
+      <div class="field ts-rem-f"><span class="lbl">Remind me</span><div class="ts-rem"></div></div>
       <div class="field"><span class="lbl">Area</span><div class="chips ts-areas"></div><input class="txt ts-custom" maxlength="30" placeholder="Garden, Pets, Study…" hidden></div>
       <div class="field"><label class="lbl" for="ts-notes">Notes</label><textarea class="txt" id="ts-notes" rows="3" placeholder="Anything to remember">${esc(t.notes)}</textarea></div>
       <div class="field"><label class="lbl" for="ts-emoji">Emoji (optional)</label><input class="txt" id="ts-emoji" maxlength="8" value="${esc(t.emoji || '')}" placeholder="🌿" style="max-width:120px"></div>`,
     foot: `<button type="button" class="btn ghost" data-a="del">${icon.trash} Delete</button><span style="flex:1"></span><button type="button" class="btn soft" data-a="x">Cancel</button><button type="button" class="btn" data-a="save">Save</button>`,
   });
   const whenLbl = $('.ts-when span', s.body);
-  const drawWhen = () => { whenLbl.textContent = describeWhen(when, todayKey()); };
+  let reminders = t.reminders || [];
+  const rem = reminderChips($('.ts-rem', s.body), reminders, !!when.time, (v) => { reminders = v; });
+  const drawWhen = () => {
+    whenLbl.textContent = describeWhen(when, todayKey());
+    $('.ts-rem-f', s.body).hidden = !when.date && !when.repeat; // anytime tasks have no day to ring on
+    rem.setTimed(!!when.time);
+  };
   const customIn = $('.ts-custom', s.body);
   const drawAreas = () => {
     $('.ts-areas', s.body).innerHTML = [['', 'None'], ...AREAS.map((a) => [a, a]), ['__custom', 'Other…']]
@@ -500,7 +557,8 @@ export function openTaskSheet(id) {
     const title = $('#ts-title', s.body).value.trim();
     if (!title) return toast('It needs a name ♡', { emoji: '✏️' });
     const ar = custom ? customIn.value.trim() : area;
-    await updateTask(id, { title, notes: $('#ts-notes', s.body).value, emoji: $('#ts-emoji', s.body).value.trim() || null, area: ar || null, dueDate: when.date, dueTime: when.time, repeat: when.repeat });
+    await updateTask(id, { title, notes: $('#ts-notes', s.body).value, emoji: $('#ts-emoji', s.body).value.trim() || null, area: ar || null, dueDate: when.date, dueTime: when.time, repeat: when.repeat, reminders: when.date || when.repeat ? rem.get() : [] });
+    armTabPings();
     toast('Saved ♡');
     s.close('save');
   };
@@ -532,10 +590,21 @@ export function mount(el) {
     userPicked = !!viewing;
     render();
   };
+  // long-press (touch) / right-click a day: add something to it
+  $('#td-week', el).addEventListener('contextmenu', (e) => {
+    const b = e.target.closest('[data-day]');
+    if (!b || b.classList.contains('td-back')) return;
+    e.preventDefault();
+    openQuickAdd(b.dataset.day);
+  });
   listBox.addEventListener('click', (e) => {
     const h = e.target.closest('[data-fold]');
     if (h) { const id = h.dataset.fold; if (folded.has(id)) folded.delete(id); else folded.add(id); render(); return; }
     if (e.target.closest('#td-empty-add')) $('.qa-input', root).focus();
+    const ev = e.target.closest('[data-ev]');
+    if (ev) { openEventSheet(ev.dataset.ev); return; }
+    const up = e.target.closest('.ev-uprow');
+    if (up) { viewing = up.dataset.day === todayKey() ? null : up.dataset.day; userPicked = !!viewing; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   });
   wireRows(listBox, () => viewDay());
   import('./garden.js').then((m) => m.mountGardenInToday && m.mountGardenInToday($('#td-garden', el))).catch(() => {});
@@ -565,8 +634,9 @@ function render() {
   $('#td-week', root).innerHTML = days.map((d) => {
     const p = buildDayPlan(input, d, today, idx);
     const open = p.total - p.doneCount + (d === today ? 0 : 0);
-    const dots = p.total && open === 0 ? '<i class="all"></i>' : Array.from({ length: Math.min(3, open) }, () => '<i></i>').join('');
-    return `<button type="button" class="td-day${d === date ? ' on' : ''}${d === today ? ' today' : ''}" data-day="${d}" aria-pressed="${d === date}" aria-label="${esc(longDate(d))}${open ? `, ${open} open` : ''}">
+    const evs = eventCount(d);
+    const dots = (evs ? '<i class="ev"></i>' : '') + (p.total && open === 0 ? '<i class="all"></i>' : Array.from({ length: Math.min(evs ? 2 : 3, open) }, () => '<i></i>').join(''));
+    return `<button type="button" class="td-day${d === date ? ' on' : ''}${d === today ? ' today' : ''}" data-day="${d}" aria-pressed="${d === date}" aria-label="${esc(longDate(d))}${open ? `, ${open} open` : ''}${evs ? `, ${evs} ${evs === 1 ? 'event' : 'events'}` : ''}">
       <span class="w">${d === today ? 'Today' : DAY_SHORT[dow(d)]}</span><b>${fromKey(d).getDate()}</b><span class="dots">${dots}</span></button>`;
   }).join('') + (isToday ? '' : `<button type="button" class="chip small td-back" data-day="${today}">Back to today</button>`);
   const plan = buildDayPlan(input, date, today, idx);
@@ -584,17 +654,20 @@ function render() {
     return !f;
   };
   const rows = (arr, inRoutine) => { out.push(`<div class="td-rows">${arr.map((o) => rowHTML(o, today, inRoutine)).join('')}</div>`); };
+  const happening = happeningHTML(date);
+  out.push(happening);
   if (plan.total && plan.doneCount === plan.total && !plan.anytime.length) out.push('<p class="td-alldone">All done — rest time ♡</p>');
   if (section('overdue', 'From earlier', plan.overdue.length)) rows(plan.overdue);
   if (section('day', isToday ? 'Today' : DAY_NAMES[dow(date)], plan.scheduled.length)) rows(plan.scheduled);
   for (const g of plan.routines) if (section('r-' + g.routine.id, routineTitle(g, date), g.items.length)) rows(g.items, true);
   if (section('anytime', 'Anytime', plan.anytime.length)) rows(plan.anytime);
   if (section('done', isToday ? 'Done today' : 'Done', plan.done.length)) rows(plan.done);
-  if (!plan.total && !plan.anytime.length) {
+  if (!plan.total && !plan.anytime.length && !happening) {
     out.push(`<div class="empty td-empty"><img src="img/illustrations/empty-lists.png" alt="" width="110" height="110">
       <h2>${isToday ? 'Nothing planned — enjoy your day ♡' : `Nothing planned for ${DAY_NAMES[dow(date)]} ♡`}</h2>
       <p>Type a task above, like “water plants every 3 days”.</p><button type="button" class="btn" id="td-empty-add">Add a task</button></div>`);
   }
+  out.push(upcomingHTML(input.tasks, (id, key) => idx.has(id + '|' + key), !folded.has('upcoming')));
   const html = out.join('');
   if (listBox._html !== html) { listBox.innerHTML = html; listBox._html = html; }
 }
